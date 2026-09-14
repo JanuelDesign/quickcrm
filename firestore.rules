@@ -1,0 +1,46 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Helper functions
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isAdmin() {
+      return isSignedIn() && (
+        // Check in usuarios collection
+        (exists(/databases/$(database)/documents/usuarios/$(request.auth.uid)) &&
+         get(/databases/$(database)/documents/usuarios/$(request.auth.uid)).data.rol == 'admin') ||
+        // Bootstrap admin check by email
+        request.auth.token.email == 'janueldesign@gmail.com' ||
+        request.auth.token.email == 'admin@quicksurfaces.com' ||
+        request.auth.token.email == 'esteban.gavotti@quicksurfaces.com' ||
+        request.auth.token.email == 'esteban@quicksurfaces.com'
+      );
+    }
+
+    function isOwnerOrUnassigned(contactData) {
+      return contactData.responsable == request.auth.uid ||
+             contactData.responsable == request.auth.token.email ||
+             contactData.responsable == 'sin asignar' ||
+             contactData.responsable == '' ||
+             !('responsable' in contactData);
+    }
+
+    // Default deny
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // Usuarios collection
+    match /usuarios/{usuarioId} {
+      allow read, write: if true;
+    }
+
+    // Contactos collection
+    match /contactos/{contactoId} {
+      allow read, write: if true;
+    }
+  }
+}

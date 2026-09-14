@@ -1,0 +1,26 @@
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+    // Carpeta de capturas de pantalla de llamadas y mensajes
+    match /capturas/{contactoId}/{fileName} {
+      // Solo usuarios autenticados (vendedor o admin) pueden visualizar
+      allow read: if request.auth != null;
+
+      // Solo usuarios autenticados pueden subir
+      // Restricciones:
+      // 1. Debe ser un archivo de imagen (image/*)
+      // 2. Tamaño máximo de 5 Megabytes (5 * 1024 * 1024 bytes)
+      allow write: if request.auth != null
+                   && request.resource.size <= 5 * 1024 * 1024
+                   && request.resource.contentType.matches('image/.*');
+
+      // Eliminación permitida a usuarios autenticados (para limpieza y mantenimiento)
+      allow delete: if request.auth != null;
+    }
+
+    // Denegar cualquier otra ruta no autorizada
+    match /{allPaths=**} {
+      allow read, write: if false;
+    }
+  }
+}

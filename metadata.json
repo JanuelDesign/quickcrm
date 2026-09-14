@@ -1,0 +1,6 @@
+{
+  "name": "QuickCRM",
+  "description": "CRM en tiempo real para Quicksurfaces: gestión de contactos, pipeline Kanban, seguimiento de ventas y métricas para vendedores y administradores en Miami-Dade.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

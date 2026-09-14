@@ -1,0 +1,137 @@
+{
+  "entities": {
+    "Contacto": {
+      "title": "Contacto",
+      "description": "Contacto o cliente de Quicksurfaces para ventas de pisos vinil/SPC, tile, wall panels, etc.",
+      "type": "object",
+      "properties": {
+        "nombre": {
+          "type": "string",
+          "description": "Nombre completo del contacto o empresa",
+          "maxLength": 150
+        },
+        "telefono": {
+          "type": "string",
+          "description": "Número de teléfono",
+          "maxLength": 30
+        },
+        "correo": {
+          "type": "string",
+          "description": "Correo electrónico",
+          "maxLength": 120
+        },
+        "direccion": {
+          "type": "string",
+          "description": "Dirección física en Miami-Dade u otra",
+          "maxLength": 250
+        },
+        "tipoCliente": {
+          "type": "string",
+          "description": "Clasificación comercial",
+          "enum": ["VIP", "Compró Antes", "Contactado sin Compra", "Nunca Contactado"]
+        },
+        "etapa": {
+          "type": "string",
+          "description": "Etapa en el pipeline de ventas",
+          "maxLength": 80
+        },
+        "ultimaCompra": {
+          "type": "string",
+          "description": "Fecha de última compra ISO string o timestamp"
+        },
+        "rolCargo": {
+          "type": "string",
+          "description": "Rol o cargo profesional del cliente",
+          "enum": ["General Contractor", "Installer", "Flip & Fix", "Home Owner", "Property Manager", "Handymen", "Reformas"]
+        },
+        "vecesQueCompro": {
+          "type": "string",
+          "description": "Historial de recurrencia de compra",
+          "enum": ["1 Compra", "<5 Compras", ">5 Compras"]
+        },
+        "estadoContacto": {
+          "type": "string",
+          "description": "Estado de la relación de contacto",
+          "enum": ["Pendiente", "Interesado", "En negociación", "Ganado", "Perdido"]
+        },
+        "fechaUltimoContacto": {
+          "type": "string",
+          "description": "Fecha del último contacto"
+        },
+        "proximoSeguimiento": {
+          "type": "string",
+          "description": "Fecha programada para el próximo seguimiento"
+        },
+        "notas": {
+          "type": "string",
+          "description": "Notas o resumen de contacto",
+          "maxLength": 5000
+        },
+        "responsable": {
+          "type": "string",
+          "description": "UID o identificador del vendedor asignado o 'sin asignar'",
+          "maxLength": 100
+        },
+        "creadoEn": {
+          "type": "string",
+          "description": "Fecha de creación"
+        },
+        "actualizadoEn": {
+          "type": "string",
+          "description": "Fecha de última actualización"
+        }
+      },
+      "required": ["nombre", "telefono", "etapa", "responsable"]
+    },
+    "Usuario": {
+      "title": "Usuario",
+      "description": "Perfil de usuario del sistema CRM (Vendedor o Admin)",
+      "type": "object",
+      "properties": {
+        "uid": {
+          "type": "string",
+          "description": "UID de Firebase Auth",
+          "maxLength": 128
+        },
+        "email": {
+          "type": "string",
+          "description": "Correo electrónico del usuario",
+          "maxLength": 120
+        },
+        "nombre": {
+          "type": "string",
+          "description": "Nombre del vendedor o admin",
+          "maxLength": 120
+        },
+        "rol": {
+          "type": "string",
+          "description": "Rol en el CRM",
+          "enum": ["admin", "vendedor"]
+        },
+        "activo": {
+          "type": "boolean",
+          "description": "Indica si el usuario está activo"
+        },
+        "creadoEn": {
+          "type": "string",
+          "description": "Fecha de creación"
+        }
+      },
+      "required": ["uid", "email", "rol"]
+    }
+  },
+  "firestore": {
+    "/contactos/{contactoId}": {
+      "schema": {
+        "$ref": "#/entities/Contacto"
+      },
+      "description": "Colección de contactos y clientes de QuickCRM"
+    },
+    "/usuarios/{usuarioId}": {
+      "schema": {
+        "$ref": "#/entities/Usuario"
+      },
+      "description": "Colección de perfiles de usuario y roles"
+    }
+  }
+}
