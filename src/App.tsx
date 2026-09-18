@@ -63,7 +63,7 @@ const MainApp: React.FC = () => {
       />
 
       {/* Main View Router */}
-      <main className="flex-1">
+      <main className="flex-1 pb-20 md:pb-6">
         {activeTab === 'kanban' && (
           <KanbanBoard
             onOpenContact={handleOpenContact}

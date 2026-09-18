@@ -101,3 +101,16 @@ export function daysSinceLastContact(dateString?: string | null): number | null 
     return null;
   }
 }
+
+/**
+ * Normaliza texto eliminando acentos, diacríticos y convirtiendo a minúsculas
+ * Ej: "Núñez" -> "nunez", "José" -> "jose"
+ */
+export function normalizeSearchText(text?: string | null): string {
+  if (!text) return '';
+  return text
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .trim();
+}

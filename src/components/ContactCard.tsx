@@ -13,7 +13,7 @@ import {
   CheckCircle2,
   XCircle,
 } from 'lucide-react';
-import { Contacto, PIPELINE_STAGES, FUNNEL_STAGES, CLIENT_SEGMENTS } from '../types/crm';
+import { Contacto, PIPELINE_STAGES, FUNNEL_STAGES, CLIENT_SEGMENTS, EXIT_STAGES } from '../types/crm';
 import {
   formatPhoneNumber,
   createWhatsAppUrl,
@@ -67,7 +67,14 @@ export const ContactCard: React.FC<ContactCardProps> = ({
 
   const handleStageChange = async (e: React.ChangeEvent<HTMLSelectElement>) => {
     e.stopPropagation();
-    await updateContactStage(contact.id, e.target.value);
+    const newStage = e.target.value;
+    if (newStage.startsWith('M13')) {
+      const confirmed = window.confirm(
+        `¿Estás seguro de enviar a ${contact.nombre} a M13 — Lista Negra? Esta es una salida definitiva del embudo de ventas.`
+      );
+      if (!confirmed) return;
+    }
+    await updateContactStage(contact.id, newStage);
   };
 
   return (
@@ -238,6 +245,13 @@ export const ContactCard: React.FC<ContactCardProps> = ({
             {CLIENT_SEGMENTS.map((s) => (
               <option key={s.id} value={s.label}>
                 {s.code} — {s.nombre}
+              </option>
+            ))}
+          </optgroup>
+          <optgroup label="Salida Permanente">
+            {EXIT_STAGES.map((s) => (
+              <option key={s.id} value={s.label}>
+                ⛔ {s.code} — {s.nombre}
               </option>
             ))}
           </optgroup>

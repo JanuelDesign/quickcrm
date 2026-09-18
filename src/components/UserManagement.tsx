@@ -22,8 +22,30 @@ import { UsuarioCRM, UserRole } from '../types/crm';
 import { formatDateTimeSpanish } from '../utils/formatters';
 
 export const UserManagement: React.FC = () => {
-  const { users, allContacts, toggleUserActive, addUser, reassignAllVendorContacts } = useCrm();
-  const { isAdmin } = useAuth();
+  const {
+    users,
+    allContacts,
+    toggleUserActive,
+    updateUserRole,
+    addUser,
+    reassignAllVendorContacts,
+    syncRealContactsToFirestore,
+    firestoreConnected,
+    isSyncing,
+  } = useCrm();
+  const { isAdmin, userProfile } = useAuth();
+  const [syncFeedback, setSyncFeedback] = useState<string | null>(null);
+
+  const handleManualSync = async () => {
+    try {
+      const count = await syncRealContactsToFirestore();
+      setSyncFeedback(`✅ Sincronizados ${count} contactos y equipo con Firestore con éxito.`);
+      setTimeout(() => setSyncFeedback(null), 4000);
+    } catch (e) {
+      setSyncFeedback('⚠️ Error al sincronizar con Firestore');
+      setTimeout(() => setSyncFeedback(null), 4000);
+    }
+  };
 
   // Storage audit state for cleaning attachments of closed contacts
   const [showStorageAudit, setShowStorageAudit] = useState(false);
@@ -159,13 +181,67 @@ export const UserManagement: React.FC = () => {
           </p>
         </div>
 
-        <button
-          onClick={() => setShowAddForm(!showAddForm)}
-          className="flex items-center gap-2 px-4 py-2.5 bg-[#FF8407] hover:bg-[#E57300] text-white text-xs font-bold rounded-xl shadow-xs transition active:scale-95"
-        >
-          <UserPlus className="w-4 h-4" />
-          <span>{showAddForm ? 'Cerrar Formulario' : 'Nuevo Vendedor'}</span>
-        </button>
+        <div className="flex flex-wrap items-center gap-2">
+          <button
+            onClick={handleManualSync}
+            disabled={isSyncing}
+            className="flex items-center gap-2 px-3.5 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-xl transition disabled:opacity-50"
+            title="Sincronizar contactos y usuarios en Firestore"
+          >
+            <RefreshCw className={`w-3.5 h-3.5 ${isSyncing ? 'animate-spin text-[#FF8407]' : ''}`} />
+            <span>{isSyncing ? 'Sincronizando...' : 'Sincronizar Firestore'}</span>
+          </button>
+
+          <button
+            onClick={() => setShowAddForm(!showAddForm)}
+            className="flex items-center gap-2 px-4 py-2.5 bg-[#FF8407] hover:bg-[#E57300] text-white text-xs font-bold rounded-xl shadow-xs transition active:scale-95"
+          >
+            <UserPlus className="w-4 h-4" />
+            <span>{showAddForm ? 'Cerrar Formulario' : 'Nuevo Vendedor'}</span>
+          </button>
+        </div>
+      </div>
+
+      {syncFeedback && (
+        <div className="p-3 bg-emerald-50 border border-emerald-200 rounded-xl text-xs font-semibold text-emerald-800 flex items-center justify-between">
+          <span>{syncFeedback}</span>
+          <button onClick={() => setSyncFeedback(null)} className="text-emerald-600 hover:underline">
+            Cerrar
+          </button>
+        </div>
+      )}
+
+      {/* Firebase Firestore Connection & Permission Status Card */}
+      <div className="bg-gradient-to-r from-slate-900 to-slate-800 text-white p-5 rounded-2xl border border-slate-700 shadow-xs flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4">
+        <div className="space-y-1.5">
+          <div className="flex items-center gap-2.5">
+            <span className="flex h-2.5 w-2.5 relative">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+              <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500"></span>
+            </span>
+            <span className="font-extrabold text-sm text-white tracking-wide flex items-center gap-1.5">
+              <span>🔥 Firebase Firestore Conectado</span>
+              <span className="text-[11px] font-mono px-2 py-0.5 rounded-full bg-slate-700 text-amber-300">
+                quicksurfaces-crm
+              </span>
+            </span>
+          </div>
+          <p className="text-xs text-slate-300 max-w-2xl leading-relaxed">
+            Los contactos y usuarios están sincronizados en tiempo real en las colecciones <code className="text-amber-300 font-mono">contactos</code> y <code className="text-amber-300 font-mono">usuarios</code>. Puedes cambiar los roles (Admin / Vendedor) directamente desde aquí o en tu Consola de Firebase, y los permisos se actualizan en vivo al instante.
+          </p>
+        </div>
+
+        <div className="flex items-center gap-4 bg-slate-800/80 px-4 py-2.5 rounded-xl border border-slate-700/80">
+          <div className="text-center">
+            <div className="text-lg font-black text-amber-400">{allContacts.length}</div>
+            <div className="text-[10px] text-slate-400 uppercase tracking-wider">Contactos</div>
+          </div>
+          <div className="w-px h-8 bg-slate-700"></div>
+          <div className="text-center">
+            <div className="text-lg font-black text-emerald-400">{users.length}</div>
+            <div className="text-[10px] text-slate-400 uppercase tracking-wider">Usuarios / Roles</div>
+          </div>
+        </div>
       </div>
 
       {/* Add User Form Drawer / Card */}
@@ -311,11 +387,31 @@ export const UserManagement: React.FC = () => {
                   </div>
                 </div>
 
-                <div className="flex items-center gap-4 self-end sm:self-center">
+                <div className="flex flex-wrap items-center gap-3 self-end sm:self-center">
                   <div className="text-right">
                     <div className="text-sm font-black text-slate-900">{assignedCount}</div>
                     <div className="text-[10px] text-slate-400">Contactos</div>
                   </div>
+
+                  {/* Role Selector (Admins can change user roles) */}
+                  {isAdmin && (
+                    <div className="flex items-center gap-1.5">
+                      <select
+                        value={u.rol}
+                        disabled={u.uid === userProfile?.uid}
+                        onChange={(e) => updateUserRole(u.uid, e.target.value as UserRole)}
+                        className={`text-xs font-bold px-2.5 py-1.5 rounded-xl border transition cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed ${
+                          u.rol === 'admin'
+                            ? 'bg-amber-50 text-amber-900 border-amber-300'
+                            : 'bg-orange-50 text-[#FF8407] border-orange-200'
+                        }`}
+                        title={u.uid === userProfile?.uid ? 'No puedes cambiar tu propio rol' : 'Cambiar rol'}
+                      >
+                        <option value="vendedor">💼 Vendedor</option>
+                        <option value="admin">👑 Administrador</option>
+                      </select>
+                    </div>
+                  )}
 
                   {/* Active Toggle Button */}
                   <button

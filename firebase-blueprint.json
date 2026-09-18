@@ -118,6 +118,68 @@
         }
       },
       "required": ["uid", "email", "rol"]
+    },
+    "HistorialAccion": {
+      "title": "HistorialAccion",
+      "description": "Registro de auditoría automática de cambios en contactos",
+      "type": "object",
+      "properties": {
+        "accion": {
+          "type": "string",
+          "enum": ["cambio_etapa", "reasignacion", "marcado_ganado", "marcado_perdido", "cambio_segmento", "creacion", "eliminado"]
+        },
+        "valorAnterior": {
+          "type": "string"
+        },
+        "valorNuevo": {
+          "type": "string"
+        },
+        "usuarioId": {
+          "type": "string"
+        },
+        "usuarioNombre": {
+          "type": "string"
+        },
+        "fecha": {
+          "type": "string"
+        },
+        "detalle": {
+          "type": "string"
+        }
+      },
+      "required": ["accion", "usuarioId", "usuarioNombre", "fecha"]
+    },
+    "RegistroEliminacion": {
+      "title": "RegistroEliminacion",
+      "description": "Auditoría de contactos eliminados del CRM",
+      "type": "object",
+      "properties": {
+        "contactoId": {
+          "type": "string"
+        },
+        "contactoNombre": {
+          "type": "string"
+        },
+        "telefono": {
+          "type": "string"
+        },
+        "etapa": {
+          "type": "string"
+        },
+        "responsable": {
+          "type": "string"
+        },
+        "usuarioId": {
+          "type": "string"
+        },
+        "usuarioNombre": {
+          "type": "string"
+        },
+        "fecha": {
+          "type": "string"
+        }
+      },
+      "required": ["contactoId", "contactoNombre", "usuarioId", "usuarioNombre", "fecha"]
     }
   },
   "firestore": {
@@ -127,11 +189,23 @@
       },
       "description": "Colección de contactos y clientes de QuickCRM"
     },
+    "/contactos/{contactoId}/historialAcciones/{accionId}": {
+      "schema": {
+        "$ref": "#/entities/HistorialAccion"
+      },
+      "description": "Subcolección de auditoría automática de acciones de un contacto"
+    },
     "/usuarios/{usuarioId}": {
       "schema": {
         "$ref": "#/entities/Usuario"
       },
       "description": "Colección de perfiles de usuario y roles"
+    },
+    "/registroEliminaciones/{eliminacionId}": {
+      "schema": {
+        "$ref": "#/entities/RegistroEliminacion"
+      },
+      "description": "Colección de auditoría de contactos eliminados"
     }
   }
 }

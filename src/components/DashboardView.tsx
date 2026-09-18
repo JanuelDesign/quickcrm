@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import {
   Users,
   AlertTriangle,
@@ -16,6 +16,7 @@ import {
   MessageCircle,
   FileText,
   Tag,
+  BarChart3,
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useCrm } from '../context/CrmContext';
@@ -24,6 +25,7 @@ import {
   FUNNEL_STAGES,
   CLIENT_SEGMENTS,
   TIPOS_CLIENTE,
+  ROLES_CARGO,
   Contacto,
 } from '../types/crm';
 import {
@@ -134,6 +136,23 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
       c.responsable.toLowerCase().trim() === 'sin asignar' ||
       c.responsable.toLowerCase().trim() === 'unassigned'
   ).length;
+
+  // KPI Distribución por rolCargo (Admin only) - Ordenado de mayor a menor
+  const rolCargoCounts = useMemo(() => {
+    return ROLES_CARGO.map((cargo) => {
+      const count = allContacts.filter((c) => c.rolCargo === cargo).length;
+      const percent = allContacts.length > 0 ? Math.round((count / allContacts.length) * 100) : 0;
+      return {
+        cargo,
+        count,
+        percent,
+      };
+    }).sort((a, b) => b.count - a.count);
+  }, [allContacts]);
+
+  const maxCargoCount = useMemo(() => {
+    return Math.max(...rolCargoCounts.map((r) => r.count), 1);
+  }, [rolCargoCounts]);
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 py-6 space-y-6">
@@ -495,9 +514,94 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         </div>
       </div>
 
-      {/* Admin Exclusive: Performance by Sales Rep & Neglected Contacts */}
+      {/* Admin Exclusive: Performance by Sales Rep, KPI Rol/Cargo & Neglected Contacts */}
       {isAdmin && (
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 pt-2">
+        <div className="space-y-6 pt-2">
+          {/* Gráfica de Barras KPI: Distribución por rolCargo */}
+          <div className="bg-white rounded-2xl border border-slate-200 shadow-xs p-5">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-4 mb-4 border-b border-slate-100">
+              <div>
+                <div className="flex items-center gap-2">
+                  <BarChart3 className="w-5 h-5 text-[#FF8407]" />
+                  <h2 className="text-sm font-extrabold text-slate-900 uppercase tracking-wider">
+                    Distribución de Clientes por Perfil (Rol / Cargo)
+                  </h2>
+                  <span className="text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded bg-orange-100 text-[#FF8407] border border-orange-200">
+                    KPI Admin
+                  </span>
+                </div>
+                <p className="text-xs text-slate-500 mt-1">
+                  Volumen de contactos según su actividad comercial, ordenado de mayor a menor cantidad
+                </p>
+              </div>
+              <div className="text-xs font-bold text-slate-600 bg-slate-50 border border-slate-200 px-3 py-1.5 rounded-xl self-start sm:self-auto">
+                Total Cartera: <span className="text-slate-900 font-extrabold">{allContacts.length}</span>
+              </div>
+            </div>
+
+            {/* Gráfica de Barras Horizontal */}
+            <div className="space-y-3.5">
+              {rolCargoCounts.map(({ cargo, count, percent }, idx) => {
+                const barWidth = maxCargoCount > 0 ? (count / maxCargoCount) * 100 : 0;
+                return (
+                  <div
+                    key={cargo}
+                    className="p-3 bg-slate-50/70 hover:bg-slate-50 rounded-xl border border-slate-200/80 transition"
+                  >
+                    <div className="flex items-center justify-between text-xs mb-2">
+                      <div className="flex items-center gap-2 min-w-0">
+                        <span
+                          className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-black shrink-0 ${
+                            idx === 0
+                              ? 'bg-[#FF8407] text-white shadow-2xs'
+                              : idx === 1
+                              ? 'bg-amber-400 text-slate-900'
+                              : idx === 2
+                              ? 'bg-slate-300 text-slate-800'
+                              : 'bg-slate-200 text-slate-600'
+                          }`}
+                        >
+                          #{idx + 1}
+                        </span>
+                        <span className="font-extrabold text-slate-900 truncate text-xs sm:text-sm">
+                          {cargo}
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-2 shrink-0">
+                        <span className="font-black text-slate-900 text-xs sm:text-sm">
+                          {count}{' '}
+                          <span className="text-slate-500 font-normal text-xs">
+                            {count === 1 ? 'contacto' : 'contactos'}
+                          </span>
+                        </span>
+                        <span className="text-slate-400 font-bold text-xs min-w-10 text-right">
+                          ({percent}%)
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Barra visual con animación de ancho */}
+                    <div className="w-full h-3.5 bg-slate-200/80 rounded-full overflow-hidden p-0.5">
+                      <div
+                        className={`h-full rounded-full transition-all duration-500 ${
+                          idx === 0
+                            ? 'bg-gradient-to-r from-orange-500 to-[#FF8407]'
+                            : idx === 1
+                            ? 'bg-gradient-to-r from-amber-500 to-amber-400'
+                            : idx === 2
+                            ? 'bg-gradient-to-r from-sky-500 to-blue-500'
+                            : 'bg-gradient-to-r from-slate-400 to-slate-500'
+                        }`}
+                        style={{ width: `${Math.max(barWidth, count > 0 ? 3 : 0)}%` }}
+                      />
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {/* Performance by Sales Rep */}
           <div className="bg-white rounded-2xl border border-slate-200 shadow-xs p-5">
             <h2 className="text-sm font-extrabold text-slate-900 uppercase tracking-wider flex items-center gap-2 mb-4">
@@ -593,7 +697,8 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             </div>
           </div>
         </div>
-      )}
-    </div>
-  );
+      </div>
+    )}
+  </div>
+);
 };

@@ -17,8 +17,44 @@ export type UserRole = 'admin' | 'vendedor';
 
 export interface AdjuntoNota {
   url: string;
-  tipo: 'llamada' | 'mensaje';
+  tipo: 'llamada' | 'mensaje' | 'pdf';
   storagePath: string;
+  nombreArchivo?: string;
+  tamanoBytes?: number;
+}
+
+export type TipoAccionAuditoria =
+  | 'cambio_etapa'
+  | 'reasignacion'
+  | 'marcado_ganado'
+  | 'marcado_perdido'
+  | 'cambio_segmento'
+  | 'creacion'
+  | 'contacto_hoy'
+  | 'eliminado';
+
+export interface HistorialAccion {
+  id?: string;
+  accion: TipoAccionAuditoria;
+  valorAnterior: string | null;
+  valorNuevo: string | null;
+  usuarioId: string;
+  usuarioNombre: string;
+  fecha: string; // ISO string
+  detalle?: string;
+}
+
+export interface RegistroEliminacion {
+  id?: string;
+  contactoId: string;
+  contactoNombre: string;
+  telefono?: string;
+  etapa?: string;
+  responsable?: string;
+  usuarioId: string;
+  usuarioNombre: string;
+  fecha: string;
+  motivo?: string;
 }
 
 export interface NotaHistorial {
@@ -68,9 +104,11 @@ export interface PipelineStage {
   description: string;
   color: string;
   bgLight: string;
+  isLateral?: boolean;
+  isExitStage?: boolean;
 }
 
-// 1. Embudo de venta (secuencial, un contacto pasa por una etapa a la vez antes de la venta)
+// 1. Embudo de venta (secuencial con salida lateral D4 para re-marketing)
 export const FUNNEL_STAGES: PipelineStage[] = [
   {
     id: 'A1',
@@ -107,6 +145,16 @@ export const FUNNEL_STAGES: PipelineStage[] = [
     description: 'Presupuesto emitido en espera de respuesta (disparador QuickQuote)',
     color: '#EA580C', // Ámbar / Naranja quemado distintivo
     bgLight: 'bg-orange-50 border-orange-200 text-orange-800',
+  },
+  {
+    id: 'D4',
+    code: 'D4',
+    nombre: 'Re-marketing',
+    label: 'D4 — Re-marketing',
+    description: 'Salida lateral: contactos sin respuesta para campaña posterior (no perdido)',
+    color: '#7C3AED', // Violeta / Púrpura distintivo
+    bgLight: 'bg-purple-50 border-purple-200 text-purple-700',
+    isLateral: true,
   },
 ];
 
@@ -159,8 +207,26 @@ export const CLIENT_SEGMENTS: PipelineStage[] = [
   },
 ];
 
+// 3. Etapas de Salida Permanente (No retornan al embudo)
+export const EXIT_STAGES: PipelineStage[] = [
+  {
+    id: 'M13',
+    code: 'M13',
+    nombre: 'Lista Negra',
+    label: 'M13 — Lista Negra',
+    description: 'Salida permanente: fraude, mal pagador, conflicto o no contactar jamás',
+    color: '#991B1B', // Dark Red / Black
+    bgLight: 'bg-stone-900 border-red-800 text-red-300',
+    isExitStage: true,
+  },
+];
+
 // Mantenemos PIPELINE_STAGES unificado para compatibilidad general
-export const PIPELINE_STAGES: PipelineStage[] = [...FUNNEL_STAGES, ...CLIENT_SEGMENTS];
+export const PIPELINE_STAGES: PipelineStage[] = [
+  ...FUNNEL_STAGES,
+  ...CLIENT_SEGMENTS,
+  ...EXIT_STAGES,
+];
 
 export const TIPOS_CLIENTE: TipoCliente[] = [
   'VIP',

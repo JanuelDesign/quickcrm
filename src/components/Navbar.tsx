@@ -9,7 +9,6 @@ import {
   LogOut,
   Sparkles,
   ChevronDown,
-  Upload,
   Plus,
   PhoneCall,
   Calendar,
@@ -35,12 +34,10 @@ export const Navbar: React.FC<NavbarProps> = ({
   onNewContact,
   onOpenContact,
 }) => {
-  const { userProfile, isAdmin, logout, simulateRole } = useAuth();
+  const { userProfile, isAdmin, logout } = useAuth();
   const { contacts } = useCrm();
 
   const [showOverdueDropdown, setShowOverdueDropdown] = useState(false);
-  const [showRoleMenu, setShowRoleMenu] = useState(false);
-  const [customLogoUrl, setCustomLogoUrl] = useState<string | null>(null);
 
   // Overdue and today follow-ups
   const overdueContacts = contacts.filter(
@@ -60,14 +57,6 @@ export const Navbar: React.FC<NavbarProps> = ({
 
   const totalUrgentCount = overdueContacts.length + todayContacts.length;
 
-  const handleLogoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      const url = URL.createObjectURL(file);
-      setCustomLogoUrl(url);
-    }
-  };
-
   return (
     <header className="sticky top-0 z-40 bg-white border-b border-slate-200/90 shadow-xs">
       {/* Top Banner with Quick Role Switcher */}
@@ -79,98 +68,20 @@ export const Navbar: React.FC<NavbarProps> = ({
           <span className="hidden sm:inline text-slate-400">Pisos Vinil SPC, Tile, Wall Panels & Steps</span>
         </div>
 
-        {/* Role & Demo Switcher */}
+        {/* User Real Role & Identity + Firebase Status */}
         <div className="flex items-center gap-2">
-          <span className="text-slate-400">Modo de prueba:</span>
-          <div className="relative">
-            <button
-              id="role-switch-btn"
-              onClick={() => setShowRoleMenu(!showRoleMenu)}
-              className="flex items-center gap-1.5 px-2.5 py-0.5 rounded bg-slate-800 hover:bg-slate-700 text-white font-medium transition"
-            >
-              <span className={isAdmin ? 'text-amber-400 font-bold' : 'text-orange-400 font-bold'}>
-                {isAdmin ? '👑 Admin' : '💼 Vendedor'}
-              </span>
-              <span className="text-slate-300">({userProfile?.nombre?.split(' ')[0]})</span>
-              <ChevronDown className="w-3.5 h-3.5 text-slate-400" />
-            </button>
+          <div className="hidden sm:flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-slate-800/90 border border-slate-700 text-[11px] text-amber-300">
+            <span className="inline-block w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping"></span>
+            <span className="font-semibold">🔥 Firestore Activo</span>
+          </div>
 
-            {showRoleMenu && (
-              <div
-                id="role-menu-dropdown"
-                className="absolute right-0 mt-1 w-64 bg-white text-slate-800 rounded-lg shadow-xl border border-slate-200 p-2 z-50 animate-in fade-in slide-in-from-top-1"
-              >
-                <div className="px-2 py-1 text-[11px] font-semibold text-slate-500 uppercase tracking-wider">
-                  Cambiar rol / usuario
-                </div>
-                <button
-                  onClick={() => {
-                    simulateRole('admin', {
-                      nombre: 'Esteban Gavotti (Admin)',
-                      email: 'esteban.gavotti@quicksurfaces.com',
-                    });
-                    setShowRoleMenu(false);
-                  }}
-                  className={`w-full text-left px-2.5 py-2 rounded-md text-xs flex items-center justify-between transition ${
-                    isAdmin ? 'bg-orange-50 text-[#FF8407] font-semibold' : 'hover:bg-slate-100'
-                  }`}
-                >
-                  <div>
-                    <div className="font-semibold flex items-center gap-1">
-                      <span>👑 Esteban Gavotti</span>
-                      <span className="text-[10px] px-1.5 py-0.5 rounded bg-amber-100 text-amber-800">Admin</span>
-                    </div>
-                    <div className="text-[10px] text-slate-600">Acceso total, reasignación, CSV</div>
-                  </div>
-                </button>
-
-                <button
-                  onClick={() => {
-                    simulateRole('vendedor', {
-                      nombre: 'Ruben Valverde (Vendedor)',
-                      email: 'ruben.valverde@quicksurfaces.com',
-                    });
-                    setShowRoleMenu(false);
-                  }}
-                  className={`w-full text-left px-2.5 py-2 rounded-md text-xs flex items-center justify-between transition ${
-                    !isAdmin && userProfile?.nombre?.includes('Ruben')
-                      ? 'bg-orange-50 text-[#FF8407] font-semibold'
-                      : 'hover:bg-slate-100'
-                  }`}
-                >
-                  <div>
-                    <div className="font-semibold flex items-center gap-1">
-                      <span>💼 Ruben Valverde</span>
-                      <span className="text-[10px] px-1.5 py-0.5 rounded bg-blue-100 text-blue-800">Vendedor</span>
-                    </div>
-                    <div className="text-[10px] text-slate-600">Cartera de clientes y sin asignar</div>
-                  </div>
-                </button>
-
-                <button
-                  onClick={() => {
-                    simulateRole('vendedor', {
-                      nombre: 'Carlos Mendoza (Vendedor)',
-                      email: 'carlos.mendoza@quicksurfaces.com',
-                    });
-                    setShowRoleMenu(false);
-                  }}
-                  className={`w-full text-left px-2.5 py-2 rounded-md text-xs flex items-center justify-between transition ${
-                    !isAdmin && userProfile?.nombre?.includes('Carlos')
-                      ? 'bg-orange-50 text-[#FF8407] font-semibold'
-                      : 'hover:bg-slate-100'
-                  }`}
-                >
-                  <div>
-                    <div className="font-semibold flex items-center gap-1">
-                      <span>💼 Carlos Mendoza</span>
-                      <span className="text-[10px] px-1.5 py-0.5 rounded bg-blue-100 text-blue-800">Vendedor</span>
-                    </div>
-                    <div className="text-[10px] text-slate-600">Cartera personal y seguimientos</div>
-                  </div>
-                </button>
-              </div>
-            )}
+          <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-slate-800 border border-slate-700 text-xs font-semibold">
+            <span className={isAdmin ? 'text-amber-400 font-bold' : 'text-[#FF8407] font-bold'}>
+              {isAdmin ? '👑 Admin' : '💼 Vendedor'}
+            </span>
+            <span className="text-slate-300">
+              {userProfile?.nombre || userProfile?.email}
+            </span>
           </div>
         </div>
       </div>
@@ -180,44 +91,17 @@ export const Navbar: React.FC<NavbarProps> = ({
         <div className="flex items-center justify-between h-16 gap-3">
           {/* Logo Brand */}
           <div className="flex items-center gap-3">
-            {customLogoUrl ? (
-              <img
-                src={customLogoUrl}
-                alt="Quicksurfaces Logo"
-                className="h-9 max-w-[140px] object-contain cursor-pointer"
-                onClick={() => setActiveTab('kanban')}
-              />
-            ) : (
-              <div
-                onClick={() => setActiveTab('kanban')}
-                className="flex items-baseline cursor-pointer select-none group"
-              >
-                <span className="text-2xl font-black tracking-tight text-slate-900 group-hover:text-slate-800">
-                  Quick
-                </span>
-                <span className="text-2xl font-black tracking-tight text-[#FF8407]">
-                  CRM
-                </span>
-                <span className="ml-1 text-[10px] font-bold uppercase tracking-wider text-slate-600 bg-slate-100 px-1.5 py-0.5 rounded border border-slate-200">
-                  Surfaces
-                </span>
-              </div>
-            )}
-
-            {/* Logo Upload Placeholder as requested */}
-            <label
-              title="Subir logo real de Quicksurfaces"
-              className="cursor-pointer text-[11px] text-slate-600 hover:text-[#FF8407] flex items-center gap-1 p-1 rounded hover:bg-slate-50 transition border border-dashed border-slate-300 hidden md:flex"
+            <div
+              onClick={() => setActiveTab('kanban')}
+              className="flex items-baseline cursor-pointer select-none group"
             >
-              <Upload className="w-3 h-3 text-[#FF8407]" />
-              <span>Logo</span>
-              <input
-                type="file"
-                accept="image/*"
-                className="hidden"
-                onChange={handleLogoUpload}
-              />
-            </label>
+              <span className="text-2xl font-black tracking-tight text-slate-900 group-hover:text-slate-800">
+                Quick
+              </span>
+              <span className="text-2xl font-black tracking-tight text-[#FF8407]">
+                CRM
+              </span>
+            </div>
           </div>
 
           {/* Navigation Tabs */}
@@ -420,46 +304,49 @@ export const Navbar: React.FC<NavbarProps> = ({
         </div>
       </div>
 
-      {/* Mobile Bottom Navigation Bar (Mobile-first for sales reps on field) */}
-      <div className="md:hidden flex items-center justify-around border-t border-slate-200 bg-white py-2 px-1">
+      {/* Mobile Bottom Fixed Navigation Bar (Thumb-friendly for field sales) */}
+      <nav
+        id="mobile-bottom-nav"
+        className="fixed bottom-0 left-0 right-0 z-40 bg-white/95 backdrop-blur-md border-t border-slate-200 shadow-[0_-4px_20px_rgba(0,0,0,0.07)] py-1 px-2 md:hidden flex items-center justify-around pb-safe"
+      >
         <button
           onClick={() => setActiveTab('kanban')}
-          className={`flex flex-col items-center gap-0.5 py-1 px-3 rounded-lg text-xs font-semibold ${
-            activeTab === 'kanban' ? 'text-[#FF8407]' : 'text-slate-500'
+          className={`flex-1 flex flex-col items-center justify-center min-h-[48px] py-1 rounded-xl text-[11px] font-bold transition active:scale-95 ${
+            activeTab === 'kanban' ? 'text-[#FF8407] bg-orange-50/80' : 'text-slate-500 hover:text-slate-800'
           }`}
         >
-          <KanbanSquare className="w-5 h-5" />
+          <KanbanSquare className="w-5 h-5 mb-0.5" />
           <span>Pipeline</span>
         </button>
 
         <button
           onClick={() => setActiveTab('list')}
-          className={`flex flex-col items-center gap-0.5 py-1 px-3 rounded-lg text-xs font-semibold ${
-            activeTab === 'list' ? 'text-[#FF8407]' : 'text-slate-500'
+          className={`flex-1 flex flex-col items-center justify-center min-h-[48px] py-1 rounded-xl text-[11px] font-bold transition active:scale-95 ${
+            activeTab === 'list' ? 'text-[#FF8407] bg-orange-50/80' : 'text-slate-500 hover:text-slate-800'
           }`}
         >
-          <Users className="w-5 h-5" />
+          <Users className="w-5 h-5 mb-0.5" />
           <span>Contactos</span>
         </button>
 
         <button
           onClick={() => setActiveTab('dashboard')}
-          className={`flex flex-col items-center gap-0.5 py-1 px-3 rounded-lg text-xs font-semibold ${
-            activeTab === 'dashboard' ? 'text-[#FF8407]' : 'text-slate-500'
+          className={`flex-1 flex flex-col items-center justify-center min-h-[48px] py-1 rounded-xl text-[11px] font-bold transition active:scale-95 ${
+            activeTab === 'dashboard' ? 'text-[#FF8407] bg-orange-50/80' : 'text-slate-500 hover:text-slate-800'
           }`}
         >
-          <LayoutDashboard className="w-5 h-5" />
+          <LayoutDashboard className="w-5 h-5 mb-0.5" />
           <span>Dashboard</span>
         </button>
 
         {isAdmin && (
           <button
             onClick={() => setActiveTab('csv')}
-            className={`flex flex-col items-center gap-0.5 py-1 px-3 rounded-lg text-xs font-semibold ${
-              activeTab === 'csv' ? 'text-[#FF8407]' : 'text-slate-500'
+            className={`flex-1 flex flex-col items-center justify-center min-h-[48px] py-1 rounded-xl text-[11px] font-bold transition active:scale-95 ${
+              activeTab === 'csv' ? 'text-[#FF8407] bg-orange-50/80' : 'text-slate-500 hover:text-slate-800'
             }`}
           >
-            <FileSpreadsheet className="w-5 h-5" />
+            <FileSpreadsheet className="w-5 h-5 mb-0.5" />
             <span>CSV</span>
           </button>
         )}
@@ -467,15 +354,15 @@ export const Navbar: React.FC<NavbarProps> = ({
         {isAdmin && (
           <button
             onClick={() => setActiveTab('users')}
-            className={`flex flex-col items-center gap-0.5 py-1 px-3 rounded-lg text-xs font-semibold ${
-              activeTab === 'users' ? 'text-[#FF8407]' : 'text-slate-500'
+            className={`flex-1 flex flex-col items-center justify-center min-h-[48px] py-1 rounded-xl text-[11px] font-bold transition active:scale-95 ${
+              activeTab === 'users' ? 'text-[#FF8407] bg-orange-50/80' : 'text-slate-500 hover:text-slate-800'
             }`}
           >
-            <UserCheck className="w-5 h-5" />
+            <UserCheck className="w-5 h-5 mb-0.5" />
             <span>Equipo</span>
           </button>
         )}
-      </div>
+      </nav>
     </header>
   );
 };

@@ -1,12 +1,12 @@
 {
-  "projectId": "kingly-citron-kxctm",
-  "appId": "1:462668314002:web:f94cf5b82513dfd2ed3d4b",
-  "apiKey": "AIzaSyAj84QHHwD5KNiPXKcZs9fWdLtuO_pZ8RY",
-  "authDomain": "kingly-citron-kxctm.firebaseapp.com",
-  "firestoreDatabaseId": "ai-studio-5668a4cd-45f0-4f02-a548-cb2192fd73cb",
-  "storageBucket": "kingly-citron-kxctm.firebasestorage.app",
-  "messagingSenderId": "462668314002",
+  "projectId": "quicksurfaces-crm",
+  "appId": "1:284200718689:web:ad4f0d20625587d505b520",
+  "apiKey": "AIzaSyAEqWvK9-CX7QFzxFpLaWES1n9t2D3MjT0",
+  "authDomain": "quicksurfaces-crm.firebaseapp.com",
+  "firestoreDatabaseId": "ai-studio-quickcrm-5668a4cd-45f0-4f02-a548-cb2192fd73cb",
+  "storageBucket": "quicksurfaces-crm.firebasestorage.app",
+  "messagingSenderId": "284200718689",
   "measurementId": "",
-  "oAuthClientId": "462668314002-7p0tk3c56fpeap12esmfqqi5kost9jva.apps.googleusercontent.com",
+  "oAuthClientId": "284200718689-pf75vdvkfrvh98t1ffsoujsevf5vqiuu.apps.googleusercontent.com",
   "recaptchaSiteKey": ""
 }

@@ -15,13 +15,14 @@ import {
   Download,
   Plus,
 } from 'lucide-react';
-import { Contacto, PIPELINE_STAGES, FUNNEL_STAGES, CLIENT_SEGMENTS, TIPOS_CLIENTE, ROLES_CARGO } from '../types/crm';
+import { Contacto, PIPELINE_STAGES, FUNNEL_STAGES, CLIENT_SEGMENTS, EXIT_STAGES, TIPOS_CLIENTE, ROLES_CARGO } from '../types/crm';
 import {
   formatPhoneNumber,
   createWhatsAppUrl,
   isFollowUpOverdue,
   isFollowUpToday,
   formatDateSpanish,
+  normalizeSearchText,
 } from '../utils/formatters';
 import { useCrm } from '../context/CrmContext';
 import { useAuth } from '../context/AuthContext';
@@ -46,6 +47,7 @@ export const ContactListView: React.FC<ContactListViewProps> = ({
   const [filterCargo, setFilterCargo] = useState('todos');
   const [filterRep, setFilterRep] = useState('todos');
   const [filterOverdue, setFilterOverdue] = useState(false);
+  const [filterToday, setFilterToday] = useState(false);
 
   // Sorting
   const [sortField, setSortField] = useState<SortField>('nombre');
@@ -58,12 +60,20 @@ export const ContactListView: React.FC<ContactListViewProps> = ({
   // Filtered List
   const filtered = contacts.filter((c) => {
     if (search.trim()) {
-      const q = search.toLowerCase();
-      const matchName = (c.nombre || '').toLowerCase().includes(q);
-      const matchPhone = (c.telefono || '').toLowerCase().includes(q);
-      const matchEmail = (c.correo || '').toLowerCase().includes(q);
-      const matchAddress = (c.direccion || '').toLowerCase().includes(q);
-      if (!matchName && !matchPhone && !matchEmail && !matchAddress) return false;
+      const q = normalizeSearchText(search);
+      const matchName = normalizeSearchText(c.nombre).includes(q);
+      const matchPhone = normalizeSearchText(c.telefono).includes(q);
+      const matchEmail = normalizeSearchText(c.correo).includes(q);
+      const matchAddress = normalizeSearchText(c.direccion).includes(q);
+      const matchCargo = normalizeSearchText(c.rolCargo).includes(q);
+      const matchSeg = normalizeSearchText(c.segmento).includes(q);
+      const matchNotes = Array.isArray(c.notas)
+        ? c.notas.some((n) => normalizeSearchText(n.texto).includes(q))
+        : typeof c.notas === 'string' && normalizeSearchText(c.notas).includes(q);
+
+      if (!matchName && !matchPhone && !matchEmail && !matchAddress && !matchCargo && !matchSeg && !matchNotes) {
+        return false;
+      }
     }
 
     if (filterStage !== 'todos') {
@@ -85,8 +95,18 @@ export const ContactListView: React.FC<ContactListViewProps> = ({
       }
     }
 
-    if (filterOverdue) {
-      if (!isFollowUpOverdue(c.proximoSeguimiento)) return false;
+    if (filterOverdue && filterToday) {
+      if (!isFollowUpOverdue(c.proximoSeguimiento) && !isFollowUpToday(c.proximoSeguimiento)) {
+        return false;
+      }
+    } else if (filterOverdue) {
+      if (!isFollowUpOverdue(c.proximoSeguimiento) || isFollowUpToday(c.proximoSeguimiento)) {
+        return false;
+      }
+    } else if (filterToday) {
+      if (!isFollowUpToday(c.proximoSeguimiento)) {
+        return false;
+      }
     }
 
     return true;
@@ -187,6 +207,13 @@ export const ContactListView: React.FC<ContactListViewProps> = ({
                 </option>
               ))}
             </optgroup>
+            <optgroup label="Salida Permanente">
+              {EXIT_STAGES.map((s) => (
+                <option key={s.id} value={s.label}>
+                  ⛔ {s.code} — {s.nombre}
+                </option>
+              ))}
+            </optgroup>
             {contacts.some(
               (c) =>
                 c.etapa &&
@@ -259,14 +286,29 @@ export const ContactListView: React.FC<ContactListViewProps> = ({
           {/* Overdue filter */}
           <button
             onClick={() => setFilterOverdue(!filterOverdue)}
-            className={`flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-lg font-semibold transition ${
+            className={`flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-lg font-semibold transition cursor-pointer ${
               filterOverdue
                 ? 'bg-red-500 text-white'
                 : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
             }`}
+            title="Filtrar por contactos con seguimiento vencido de días anteriores"
           >
             <AlertTriangle className="w-3.5 h-3.5" />
             <span>Vencidos</span>
+          </button>
+
+          {/* Today filter */}
+          <button
+            onClick={() => setFilterToday(!filterToday)}
+            className={`flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-lg font-semibold transition cursor-pointer ${
+              filterToday
+                ? 'bg-amber-500 text-white'
+                : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+            }`}
+            title="Filtrar por contactos con seguimiento programado para hoy"
+          >
+            <Clock className="w-3.5 h-3.5" />
+            <span>Hoy</span>
           </button>
         </div>
       </div>
@@ -456,7 +498,9 @@ export const ContactListView: React.FC<ContactListViewProps> = ({
                         <div className="flex flex-wrap items-center gap-1.5">
                           <span
                             className={`inline-block text-[11px] font-bold px-2 py-0.5 rounded-md ${
-                              c.etapa?.startsWith('F6')
+                              c.etapa?.startsWith('M13')
+                                ? 'bg-stone-900 text-red-300 border border-red-800 font-black'
+                                : c.etapa?.startsWith('F6')
                                 ? 'bg-orange-100 text-[#EA580C] border border-orange-300 font-black'
                                 : 'bg-slate-100 text-slate-700 border border-slate-200'
                             }`}
