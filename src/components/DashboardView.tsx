@@ -613,30 +613,31 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               {repCounts.map(({ user, total, overdue, won }) => (
                 <div
                   key={user.uid}
-                  className="p-3.5 bg-slate-50 rounded-xl border border-slate-200 flex items-center justify-between"
+                  className="p-3.5 bg-slate-50 rounded-xl border border-slate-200 flex flex-col sm:flex-row sm:items-center justify-between gap-3"
                 >
-                  <div>
-                    <div className="font-bold text-xs text-slate-900 flex items-center gap-1.5">
-                      <span>{user.nombre}</span>
-                      <span className="text-[10px] px-1.5 py-0.5 rounded bg-slate-200 text-slate-700">
+                  <div className="min-w-0">
+                    <div className="font-bold text-xs sm:text-sm text-slate-900 flex items-center gap-1.5 flex-wrap">
+                      <span className="truncate">{user.nombre}</span>
+                      <span className="text-[10px] px-1.5 py-0.5 rounded bg-slate-200 text-slate-700 font-semibold shrink-0">
                         {user.rol}
                       </span>
                     </div>
-                    <div className="text-[11px] text-slate-500 mt-0.5">{user.email}</div>
+                    <div className="text-[11px] text-slate-500 mt-0.5 truncate">{user.email}</div>
                   </div>
 
-                  <div className="flex items-center gap-3 text-xs">
-                    <div className="text-center">
-                      <div className="font-extrabold text-slate-900">{total}</div>
-                      <div className="text-[10px] text-slate-400">Total</div>
+                  {/* 3-column fixed grid on mobile, row on sm+ */}
+                  <div className="grid grid-cols-3 gap-2 pt-2 border-t border-slate-200/80 sm:pt-0 sm:border-0 sm:flex sm:items-center sm:gap-4 shrink-0">
+                    <div className="bg-white sm:bg-transparent rounded-lg p-1.5 sm:p-0 border border-slate-200/60 sm:border-0 text-center">
+                      <div className="font-black text-slate-900 text-sm sm:text-xs">{total}</div>
+                      <div className="text-[10px] text-slate-400 font-medium whitespace-nowrap">Total</div>
                     </div>
-                    <div className="text-center">
-                      <div className="font-extrabold text-red-600">{overdue}</div>
-                      <div className="text-[10px] text-slate-400">Vencidos</div>
+                    <div className="bg-white sm:bg-transparent rounded-lg p-1.5 sm:p-0 border border-slate-200/60 sm:border-0 text-center">
+                      <div className="font-black text-red-600 text-sm sm:text-xs">{overdue}</div>
+                      <div className="text-[10px] text-red-500 font-medium whitespace-nowrap">Vencidos</div>
                     </div>
-                    <div className="text-center">
-                      <div className="font-extrabold text-emerald-600">{won}</div>
-                      <div className="text-[10px] text-slate-400">Ganados</div>
+                    <div className="bg-white sm:bg-transparent rounded-lg p-1.5 sm:p-0 border border-slate-200/60 sm:border-0 text-center">
+                      <div className="font-black text-emerald-600 text-sm sm:text-xs">{won}</div>
+                      <div className="text-[10px] text-emerald-600 font-bold whitespace-nowrap">Ganados</div>
                     </div>
                   </div>
                 </div>
@@ -679,15 +680,15 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                     <div
                       key={c.id}
                       onClick={() => onOpenContact(c)}
-                      className="p-2.5 rounded-xl bg-amber-50/50 hover:bg-amber-100/60 border border-amber-200/80 flex items-center justify-between cursor-pointer transition text-xs"
+                      className="p-3 rounded-xl bg-amber-50/50 hover:bg-amber-100/60 border border-amber-200/80 flex flex-col sm:flex-row sm:items-center justify-between gap-2 cursor-pointer transition text-xs"
                     >
-                      <div>
-                        <div className="font-bold text-slate-900">{c.nombre}</div>
-                        <div className="text-[10px] text-slate-500">
-                          Resp: {c.responsable} • {c.rolCargo}
+                      <div className="min-w-0">
+                        <div className="font-bold text-slate-900 truncate">{c.nombre}</div>
+                        <div className="text-[10px] text-slate-500 mt-0.5">
+                          Resp: <span className="font-semibold text-slate-700">{c.responsable}</span> • {c.rolCargo}
                         </div>
                       </div>
-                      <span className="text-[11px] font-bold text-amber-800 bg-white px-2 py-1 rounded-md border border-amber-200">
+                      <span className="text-[11px] font-bold text-amber-900 bg-white px-2.5 py-1 rounded-lg border border-amber-200 whitespace-nowrap shrink-0 self-start sm:self-auto">
                         {days !== null ? `${days} días sin contacto` : 'Nunca contactado'}
                       </span>
                     </div>

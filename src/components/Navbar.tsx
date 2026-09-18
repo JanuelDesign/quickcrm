@@ -13,6 +13,7 @@ import {
   PhoneCall,
   Calendar,
   AlertTriangle,
+  X,
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useCrm } from '../context/CrmContext';
@@ -201,84 +202,102 @@ export const Navbar: React.FC<NavbarProps> = ({
                 )}
               </button>
 
-              {/* Overdue Dropdown */}
+              {/* Overdue Alerts Modal / Dropdown */}
               {showOverdueDropdown && (
-                <div
-                  id="overdue-list-dropdown"
-                  className="absolute right-0 mt-2 w-80 sm:w-96 bg-white rounded-xl shadow-xl border border-slate-200 p-3 z-50 animate-in fade-in"
-                >
-                  <div className="flex items-center justify-between pb-2 border-b border-slate-100">
-                    <div className="flex items-center gap-1.5 font-bold text-slate-900 text-sm">
-                      <AlertTriangle className="w-4 h-4 text-red-500" />
-                      <span>Seguimientos Urgentes</span>
-                    </div>
-                    <span className="text-xs bg-red-100 text-red-700 font-semibold px-2 py-0.5 rounded-full">
-                      {totalUrgentCount} pendientes
-                    </span>
-                  </div>
+                <>
+                  {/* Backdrop on mobile */}
+                  <div
+                    className="fixed inset-0 bg-black/40 z-50 sm:hidden"
+                    onClick={() => setShowOverdueDropdown(false)}
+                  />
 
-                  <div className="max-h-80 overflow-y-auto divide-y divide-slate-100 py-1">
-                    {totalUrgentCount === 0 ? (
-                      <div className="py-6 text-center text-xs text-slate-500">
-                        🎉 ¡Excelente! No tienes seguimientos vencidos por ahora.
+                  <div
+                    id="overdue-list-dropdown"
+                    className="fixed inset-0 sm:inset-auto sm:absolute sm:right-0 sm:mt-2 w-full sm:w-96 h-full sm:h-auto max-h-none sm:max-h-[32rem] bg-white sm:rounded-2xl shadow-2xl sm:shadow-xl sm:border sm:border-slate-200 p-4 sm:p-3 z-50 flex flex-col animate-in fade-in duration-150"
+                  >
+                    <div className="flex items-center justify-between pb-3 border-b border-slate-100 shrink-0">
+                      <div className="flex items-center gap-2 font-bold text-slate-900 text-sm sm:text-base">
+                        <AlertTriangle className="w-5 h-5 sm:w-4 sm:h-4 text-red-500" />
+                        <span>Seguimientos Urgentes</span>
                       </div>
-                    ) : (
-                      <>
-                        {overdueContacts.map((c) => (
-                          <div
-                            key={c.id}
-                            onClick={() => {
-                              onOpenContact(c);
-                              setShowOverdueDropdown(false);
-                            }}
-                            className="p-2 hover:bg-red-50/50 rounded-lg cursor-pointer transition group"
-                          >
-                            <div className="flex items-center justify-between">
-                              <span className="font-semibold text-xs text-slate-900 group-hover:text-[#FF8407]">
-                                {c.nombre}
-                              </span>
-                              <span className="text-[10px] font-bold text-red-600 bg-red-100 px-1.5 py-0.5 rounded">
-                                ¡Vencido!
-                              </span>
-                            </div>
-                            <div className="flex items-center justify-between mt-1 text-[11px] text-slate-500">
-                              <span>{c.rolCargo}</span>
-                              <span className="font-medium text-red-700">
-                                {formatDateTimeSpanish(c.proximoSeguimiento)}
-                              </span>
-                            </div>
-                          </div>
-                        ))}
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs bg-red-100 text-red-700 font-bold px-2 py-0.5 rounded-full">
+                          {totalUrgentCount} pendientes
+                        </span>
+                        <button
+                          onClick={() => setShowOverdueDropdown(false)}
+                          className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition min-h-[36px] min-w-[36px] flex items-center justify-center cursor-pointer"
+                          title="Cerrar"
+                          aria-label="Cerrar"
+                        >
+                          <X className="w-5 h-5 sm:w-4 sm:h-4" />
+                        </button>
+                      </div>
+                    </div>
 
-                        {todayContacts.map((c) => (
-                          <div
-                            key={c.id}
-                            onClick={() => {
-                              onOpenContact(c);
-                              setShowOverdueDropdown(false);
-                            }}
-                            className="p-2 hover:bg-amber-50/50 rounded-lg cursor-pointer transition group"
-                          >
-                            <div className="flex items-center justify-between">
-                              <span className="font-semibold text-xs text-slate-900 group-hover:text-[#FF8407]">
-                                {c.nombre}
-                              </span>
-                              <span className="text-[10px] font-bold text-amber-700 bg-amber-100 px-1.5 py-0.5 rounded">
-                                Hoy
-                              </span>
+                    <div className="flex-1 overflow-y-auto divide-y divide-slate-100 py-1">
+                      {totalUrgentCount === 0 ? (
+                        <div className="py-12 sm:py-6 text-center text-sm sm:text-xs text-slate-500">
+                          🎉 ¡Excelente! No tienes seguimientos vencidos por ahora.
+                        </div>
+                      ) : (
+                        <>
+                          {overdueContacts.map((c) => (
+                            <div
+                              key={c.id}
+                              onClick={() => {
+                                onOpenContact(c);
+                                setShowOverdueDropdown(false);
+                              }}
+                              className="p-3 sm:p-2 hover:bg-red-50/50 rounded-xl sm:rounded-lg cursor-pointer transition group"
+                            >
+                              <div className="flex items-center justify-between">
+                                <span className="font-semibold text-sm sm:text-xs text-slate-900 group-hover:text-[#FF8407]">
+                                  {c.nombre}
+                                </span>
+                                <span className="text-[11px] sm:text-[10px] font-bold text-red-600 bg-red-100 px-2 py-0.5 rounded">
+                                  ¡Vencido!
+                                </span>
+                              </div>
+                              <div className="flex items-center justify-between mt-1 text-xs sm:text-[11px] text-slate-500">
+                                <span>{c.rolCargo}</span>
+                                <span className="font-medium text-red-700">
+                                  {formatDateTimeSpanish(c.proximoSeguimiento)}
+                                </span>
+                              </div>
                             </div>
-                            <div className="flex items-center justify-between mt-1 text-[11px] text-slate-500">
-                              <span>{c.rolCargo}</span>
-                              <span className="font-medium text-amber-800">
-                                {formatDateTimeSpanish(c.proximoSeguimiento)}
-                              </span>
+                          ))}
+
+                          {todayContacts.map((c) => (
+                            <div
+                              key={c.id}
+                              onClick={() => {
+                                onOpenContact(c);
+                                setShowOverdueDropdown(false);
+                              }}
+                              className="p-3 sm:p-2 hover:bg-amber-50/50 rounded-xl sm:rounded-lg cursor-pointer transition group"
+                            >
+                              <div className="flex items-center justify-between">
+                                <span className="font-semibold text-sm sm:text-xs text-slate-900 group-hover:text-[#FF8407]">
+                                  {c.nombre}
+                                </span>
+                                <span className="text-[11px] sm:text-[10px] font-bold text-amber-700 bg-amber-100 px-2 py-0.5 rounded">
+                                  Hoy
+                                </span>
+                              </div>
+                              <div className="flex items-center justify-between mt-1 text-xs sm:text-[11px] text-slate-500">
+                                <span>{c.rolCargo}</span>
+                                <span className="font-medium text-amber-800">
+                                  {formatDateTimeSpanish(c.proximoSeguimiento)}
+                                </span>
+                              </div>
                             </div>
-                          </div>
-                        ))}
-                      </>
-                    )}
+                          ))}
+                        </>
+                      )}
+                    </div>
                   </div>
-                </div>
+                </>
               )}
             </div>
 

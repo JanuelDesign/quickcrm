@@ -68,6 +68,8 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({
 
   // Mobile Active Stage tab ('funnel_a1' | 'funnel_c3' | 'funnel_e5' | 'funnel_f6' | 'column_closed' | extra stage id)
   const [mobileStageId, setMobileStageId] = useState<string>('funnel_a1');
+  // Active Segment Code for Segmentos Tab ('H8' | 'I9' | 'J10' | 'K11' | 'N14')
+  const [activeSegmentCode, setActiveSegmentCode] = useState<string>('H8');
 
   // Mobile Filters Drawer State
   const [showMobileFilters, setShowMobileFilters] = useState(false);
@@ -78,7 +80,6 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({
   const [selectedTipo, setSelectedTipo] = useState<string>('todos');
   const [onlyOverdue, setOnlyOverdue] = useState(false);
   const [onlyToday, setOnlyToday] = useState(false);
-  const [selectedSegmentFilter, setSelectedSegmentFilter] = useState<string>('todos');
 
   // Drag & Drop State (Only active in Embudo)
   const [draggingContactId, setDraggingContactId] = useState<string | null>(null);
@@ -137,9 +138,8 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({
     if (selectedTipo !== 'todos') count++;
     if (onlyOverdue) count++;
     if (onlyToday) count++;
-    if (selectedSegmentFilter !== 'todos') count++;
     return count;
-  }, [selectedRep, selectedTipo, onlyOverdue, onlyToday, selectedSegmentFilter]);
+  }, [selectedRep, selectedTipo, onlyOverdue, onlyToday]);
 
   // Filter Contacts
   const filteredContacts = useMemo(() => {
@@ -191,14 +191,6 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({
         }
       }
 
-      // Filter by Segment (in Segments tab)
-      if (activeTab === 'segmentos' && selectedSegmentFilter !== 'todos') {
-        const seg = getContactSegment(contact);
-        if (!seg || !seg.includes(selectedSegmentFilter)) {
-          return false;
-        }
-      }
-
       return true;
     });
   }, [
@@ -208,8 +200,6 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({
     selectedTipo,
     onlyOverdue,
     onlyToday,
-    selectedSegmentFilter,
-    activeTab,
   ]);
 
   // Drag & Drop handlers (Only for Embudo)
@@ -288,7 +278,6 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({
     setSelectedTipo('todos');
     setOnlyOverdue(false);
     setOnlyToday(false);
-    setSelectedSegmentFilter('todos');
   };
 
   // Helper to render an Embudo Stage Column (reused in desktop multi-col and mobile single-col)
@@ -319,7 +308,9 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({
         onDragLeave={handleDragLeave}
         onDrop={(e) => handleDrop(e, stage.label)}
         className={`${
-          isMobileFullWidth ? 'w-full flex-1 flex flex-col' : 'w-72 md:w-80 flex flex-col shrink-0'
+          isMobileFullWidth
+            ? 'w-full flex-1 flex flex-col h-full min-h-0'
+            : 'w-72 md:w-80 flex flex-col shrink-0 h-full min-h-0'
         } rounded-2xl bg-slate-50/90 border transition-all duration-150 ${
           isDropping
             ? 'border-[#FF8407] ring-2 ring-[#FF8407]/30 bg-orange-50/40'
@@ -433,7 +424,7 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({
         )}
 
         {/* Cards Container */}
-        <div className="flex-1 overflow-y-auto p-2.5 space-y-2.5">
+        <div className="flex-1 overflow-y-auto min-h-0 p-2.5 space-y-2.5 [webkit-overflow-scrolling:touch]">
           {stageContacts.length === 0 ? (
             isD4 ? (
               <div className="h-32 border-2 border-dashed border-purple-300 rounded-xl flex flex-col items-center justify-center text-purple-600 text-xs p-3 text-center bg-purple-50/30">
@@ -482,7 +473,9 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({
       <div
         id="column-closed"
         className={`${
-          isMobileFullWidth ? 'w-full flex-1 flex flex-col' : 'w-72 md:w-84 flex flex-col shrink-0'
+          isMobileFullWidth
+            ? 'w-full flex-1 flex flex-col h-full min-h-0'
+            : 'w-72 md:w-84 flex flex-col shrink-0 h-full min-h-0'
         } rounded-2xl bg-emerald-50/20 border-2 border-emerald-200/80 shadow-xs`}
       >
         {/* Header Ganado / Perdido */}
@@ -519,7 +512,7 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({
         </div>
 
         {/* Cards Container */}
-        <div className="flex-1 overflow-y-auto p-2.5 space-y-2.5">
+        <div className="flex-1 overflow-y-auto min-h-0 p-2.5 space-y-2.5 [webkit-overflow-scrolling:touch]">
           {wonOrLostContacts.length === 0 ? (
             <div className="h-36 border-2 border-dashed border-emerald-200 rounded-xl flex flex-col items-center justify-center text-slate-400 text-xs p-3 text-center">
               <CheckCircle2 className="w-5 h-5 text-emerald-400 mb-1" />
@@ -589,14 +582,14 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({
     <div className="flex flex-col h-[calc(100vh-7.5rem)] md:h-[calc(100vh-6.5rem)] overflow-hidden">
       {/* Top Header & Tab Switcher Bar */}
       <div className="bg-white border-b border-slate-200/90 px-3 sm:px-4 py-2 shrink-0 shadow-2xs">
-        <div className="max-w-7xl mx-auto flex items-center justify-between gap-2">
-          {/* Main Tabs Navigation */}
-          <div className="flex items-center gap-1.5 p-1 bg-slate-100 rounded-xl border border-slate-200">
+        <div className="max-w-7xl mx-auto flex items-center justify-between gap-2 overflow-hidden">
+          {/* Main Tabs Navigation (Smooth touch scroll, no wrapping) */}
+          <div className="flex items-center gap-1.5 p-1 bg-slate-100 rounded-xl border border-slate-200 overflow-x-auto no-scrollbar [webkit-overflow-scrolling:touch] max-w-full">
             {/* Tab: Embudo */}
             <button
               id="tab-embudo-button"
               onClick={() => setActiveTab('embudo')}
-              className={`flex items-center gap-1.5 sm:gap-2 px-3 sm:px-3.5 py-1.5 min-h-[40px] rounded-lg text-xs font-bold transition-all cursor-pointer ${
+              className={`flex items-center gap-1.5 sm:gap-2 px-3 sm:px-3.5 py-1.5 min-h-[40px] rounded-lg text-xs font-bold transition-all cursor-pointer whitespace-nowrap shrink-0 ${
                 activeTab === 'embudo'
                   ? 'bg-white text-slate-900 shadow-xs border border-slate-200/80'
                   : 'text-slate-600 hover:text-slate-900 hover:bg-white/50'
@@ -619,7 +612,7 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({
             <button
               id="tab-segmentos-button"
               onClick={() => setActiveTab('segmentos')}
-              className={`flex items-center gap-1.5 sm:gap-2 px-3 sm:px-3.5 py-1.5 min-h-[40px] rounded-lg text-xs font-bold transition-all cursor-pointer ${
+              className={`flex items-center gap-1.5 sm:gap-2 px-3 sm:px-3.5 py-1.5 min-h-[40px] rounded-lg text-xs font-bold transition-all cursor-pointer whitespace-nowrap shrink-0 ${
                 activeTab === 'segmentos'
                   ? 'bg-white text-slate-900 shadow-xs border border-slate-200/80'
                   : 'text-slate-600 hover:text-slate-900 hover:bg-white/50'
@@ -642,7 +635,7 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({
             <button
               id="tab-lista-negra-button"
               onClick={() => setActiveTab('lista_negra')}
-              className={`flex items-center gap-1.5 sm:gap-2 px-3 sm:px-3.5 py-1.5 min-h-[40px] rounded-lg text-xs font-bold transition-all cursor-pointer ${
+              className={`flex items-center gap-1.5 sm:gap-2 px-3 sm:px-3.5 py-1.5 min-h-[40px] rounded-lg text-xs font-bold transition-all cursor-pointer whitespace-nowrap shrink-0 ${
                 activeTab === 'lista_negra'
                   ? 'bg-stone-900 text-red-300 shadow-xs border border-red-800'
                   : 'text-slate-600 hover:text-red-700 hover:bg-red-50'
@@ -668,31 +661,44 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({
       <div className="bg-white px-3 sm:px-4 py-2 border-b border-slate-200/80 shrink-0">
         <div className="max-w-7xl mx-auto flex items-center justify-between gap-2">
           {/* Search bar */}
-          <div className="relative flex-1 min-w-[180px] max-w-md">
+          <div className="relative flex-1 min-w-[170px] max-w-md">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
             <input
               id="kanban-search-input"
               type="text"
               placeholder={
                 activeTab === 'embudo'
-                  ? 'Buscar en embudo...'
+                  ? 'Buscar nombre, tel, cargo...'
                   : activeTab === 'segmentos'
                   ? 'Buscar cliente o segmento...'
                   : 'Buscar en lista negra M13...'
               }
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  (e.target as HTMLInputElement).blur();
+                }
+              }}
               className="w-full pl-9 pr-8 py-2 min-h-[42px] bg-slate-50 border border-slate-200 rounded-xl text-xs sm:text-sm text-slate-900 focus:outline-none focus:border-[#FF8407] focus:bg-white transition"
             />
             {searchQuery && (
               <button
                 onClick={() => setSearchQuery('')}
                 className="absolute right-2.5 top-1/2 -translate-y-1/2 text-xs text-slate-400 hover:text-slate-600 p-1"
+                title="Borrar búsqueda"
               >
                 ✕
               </button>
             )}
           </div>
+
+          {/* Search Results Count Badge */}
+          {searchQuery.trim() && (
+            <div className="text-[11px] font-bold text-[#FF8407] bg-orange-50 border border-orange-200 px-2.5 py-1.5 rounded-xl shrink-0 flex items-center gap-1 animate-in fade-in">
+              <span>{filteredContacts.length} {filteredContacts.length === 1 ? 'resultado' : 'resultados'}</span>
+            </div>
+          )}
 
           {/* Mobile Single "Filtros" Button opening Bottom Sheet */}
           <div className="flex items-center gap-2">
@@ -789,9 +795,9 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({
 
       {/* VIEW 1: EMBUDO DE VENTA */}
       {activeTab === 'embudo' && (
-        <div className="flex-1 flex flex-col overflow-hidden bg-slate-100/60">
-          {/* Mobile Top Tabs for Stages (A1, C3, E5, F6, Cierres) */}
-          <div className="md:hidden bg-white border-b border-slate-200/90 px-3 py-1.5 flex items-center gap-1.5 overflow-x-auto shrink-0 snap-x">
+        <div className="flex-1 flex flex-col min-h-0 overflow-hidden bg-slate-100/60">
+          {/* Mobile Top Tabs for Stages (A1, C3, E5, F6, Cierres) - smooth touch scroll without visual noise */}
+          <div className="md:hidden bg-white border-b border-slate-200/90 px-3 py-1.5 flex items-center gap-1.5 overflow-x-auto shrink-0 no-scrollbar [webkit-overflow-scrolling:touch]">
             {funnelColumns.map((stg) => {
               const isSelected = mobileStageId === stg.id;
               const count = filteredContacts.filter((c) => {
@@ -806,7 +812,7 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({
                   key={stg.id}
                   type="button"
                   onClick={() => setMobileStageId(stg.id)}
-                  className={`flex items-center gap-1.5 px-3.5 py-2 min-h-[44px] rounded-xl text-xs font-bold transition whitespace-nowrap snap-start cursor-pointer ${
+                  className={`flex items-center gap-1.5 px-3.5 py-2 min-h-[44px] rounded-xl text-xs font-bold transition whitespace-nowrap shrink-0 cursor-pointer ${
                     isSelected
                       ? 'bg-slate-900 text-white shadow-xs'
                       : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
@@ -832,7 +838,7 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({
             <button
               type="button"
               onClick={() => setMobileStageId('column_closed')}
-              className={`flex items-center gap-1.5 px-3.5 py-2 min-h-[44px] rounded-xl text-xs font-bold transition whitespace-nowrap snap-start cursor-pointer ${
+              className={`flex items-center gap-1.5 px-3.5 py-2 min-h-[44px] rounded-xl text-xs font-bold transition whitespace-nowrap shrink-0 cursor-pointer ${
                 mobileStageId === 'column_closed'
                   ? 'bg-emerald-700 text-white shadow-xs'
                   : 'bg-emerald-50 text-emerald-800 border border-emerald-200'
@@ -853,7 +859,7 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({
           </div>
 
           {/* Mobile Single Column Display (< md) */}
-          <div className="md:hidden flex-1 flex flex-col overflow-hidden p-3">
+          <div className="md:hidden flex-1 flex flex-col min-h-0 overflow-hidden p-3">
             {mobileStageId === 'column_closed'
               ? renderClosedColumn(true)
               : renderFunnelColumn(
@@ -863,7 +869,7 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({
           </div>
 
           {/* Desktop Multi-column Kanban Display (>= md) */}
-          <div className="hidden md:flex flex-1 overflow-x-auto overflow-y-hidden p-4">
+          <div className="hidden md:flex flex-1 overflow-x-auto min-h-0 p-4">
             <div className="flex gap-4 h-full min-w-max pb-2">
               {funnelColumns.map((stage) => renderFunnelColumn(stage, false))}
               {renderClosedColumn(false)}
@@ -872,168 +878,181 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({
         </div>
       )}
 
-      {/* VIEW 2: SEGMENTOS DE CLIENTE */}
+      {/* VIEW 2: SEGMENTOS DE CLIENTE (Tabs horizontales, un segmento a la vez a todo el ancho) */}
       {activeTab === 'segmentos' && (
-        <div className="flex-1 overflow-y-auto p-3 sm:p-6 bg-slate-50/80 space-y-4">
-          {/* Header Concept Notice Banner */}
-          <div className="bg-gradient-to-r from-purple-950 via-indigo-950 to-slate-900 rounded-2xl p-4 sm:p-5 text-white shadow-xs flex flex-col md:flex-row items-start md:items-center justify-between gap-3">
-            <div className="space-y-1">
-              <div className="flex items-center gap-2 text-xs font-bold text-purple-300 uppercase tracking-wider">
-                <Tag className="w-3.5 h-3.5" />
-                <span>Clasificación de Cartera Post-Venta</span>
-              </div>
-              <h2 className="text-base sm:text-xl font-black tracking-tight">
-                Segmentación Comercial Quicksurfaces
-              </h2>
-              <p className="text-xs text-purple-200/80 max-w-2xl leading-relaxed hidden sm:block">
-                Los segmentos representan el comportamiento, volumen y recurrencia de los clientes.
-                Haz clic sobre cualquier cliente para abrir su ficha y reclasificarlo.
-              </p>
-            </div>
+        <div className="flex-1 flex flex-col min-h-0 overflow-hidden bg-slate-100/60">
+          {/* Horizontal Tabs for Segments: H8 | I9 | J10 | K11 | N14 */}
+          <div className="bg-white border-b border-slate-200/90 px-3 py-1.5 flex items-center gap-1.5 overflow-x-auto shrink-0 no-scrollbar [webkit-overflow-scrolling:touch]">
+            {CLIENT_SEGMENTS.map((seg) => {
+              const isSelected = activeSegmentCode === seg.code;
+              const count = filteredContacts.filter((c) => contactMatchesSegment(c, seg)).length;
 
-            <div className="flex items-center gap-2 shrink-0">
-              <span className="px-3 py-1.5 rounded-xl bg-white/10 text-white text-xs font-bold border border-white/15">
-                Total: {segmentedCount}
-              </span>
-            </div>
+              return (
+                <button
+                  key={seg.id}
+                  type="button"
+                  onClick={() => setActiveSegmentCode(seg.code)}
+                  className={`flex items-center gap-1.5 px-3.5 py-2 min-h-[44px] rounded-xl text-xs font-bold transition whitespace-nowrap shrink-0 cursor-pointer ${
+                    isSelected
+                      ? 'bg-purple-900 text-white shadow-xs'
+                      : 'bg-purple-50 text-purple-800 hover:bg-purple-100 border border-purple-200/60'
+                  }`}
+                >
+                  <span
+                    className="w-2.5 h-2.5 rounded-full shrink-0"
+                    style={{ backgroundColor: seg.color }}
+                  />
+                  <span>{seg.code}</span>
+                  <span className="hidden sm:inline font-medium opacity-90">• {seg.nombre}</span>
+                  <span
+                    className={`text-[10px] px-1.5 py-0.2 rounded-full font-black ${
+                      isSelected ? 'bg-white/20 text-white' : 'bg-white text-purple-900'
+                    }`}
+                  >
+                    {count}
+                  </span>
+                </button>
+              );
+            })}
           </div>
 
-          {/* Segment Filter Buttons Bar (Mobile scrollable horizontal) */}
-          <div className="flex items-center gap-1.5 overflow-x-auto pb-1 shrink-0">
-            <button
-              onClick={() => setSelectedSegmentFilter('todos')}
-              className={`px-3 py-2 min-h-[40px] rounded-xl text-xs font-bold whitespace-nowrap transition cursor-pointer ${
-                selectedSegmentFilter === 'todos'
-                  ? 'bg-purple-700 text-white shadow-xs'
-                  : 'bg-white text-slate-700 border border-slate-200 hover:bg-slate-50'
-              }`}
-            >
-              Todos los Segmentos
-            </button>
-            {CLIENT_SEGMENTS.map((s) => (
-              <button
-                key={s.id}
-                onClick={() => setSelectedSegmentFilter(s.code)}
-                className={`flex items-center gap-1 px-3 py-2 min-h-[40px] rounded-xl text-xs font-bold whitespace-nowrap transition cursor-pointer ${
-                  selectedSegmentFilter === s.code
-                    ? 'bg-purple-700 text-white shadow-xs'
-                    : 'bg-white text-slate-700 border border-slate-200 hover:bg-slate-50'
-                }`}
-              >
-                <span>{s.code}</span>
-                <span className="hidden sm:inline">• {s.nombre}</span>
-              </button>
-            ))}
-          </div>
-
-          {/* Grid de Grupos de Segmentos */}
-          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 pb-4">
-            {CLIENT_SEGMENTS.filter(
-              (seg) =>
-                selectedSegmentFilter === 'todos' || seg.code === selectedSegmentFilter
-            ).map((segment) => {
+          {/* Active Segment Full-width View */}
+          <div className="flex-1 flex flex-col min-h-0 overflow-hidden p-3 sm:p-4">
+            {(() => {
+              const currentSegment =
+                CLIENT_SEGMENTS.find((s) => s.code === activeSegmentCode) || CLIENT_SEGMENTS[0];
               const segContacts = filteredContacts.filter((c) =>
-                contactMatchesSegment(c, segment)
+                contactMatchesSegment(c, currentSegment)
               );
 
               return (
-                <div
-                  key={segment.id}
-                  className="bg-white rounded-2xl border border-slate-200 shadow-2xs overflow-hidden flex flex-col"
-                >
-                  {/* Card Header */}
-                  <div className="p-3.5 border-b border-slate-100 bg-slate-50/70 flex items-center justify-between gap-2">
-                    <div className="flex items-center gap-2 min-w-0">
-                      <span className="px-2.5 py-1 rounded-lg text-xs font-black bg-purple-100 text-purple-800 border border-purple-200 shrink-0">
-                        {segment.code}
+                <div className="w-full flex-1 flex flex-col min-h-0 bg-white rounded-2xl border border-slate-200 shadow-2xs overflow-hidden">
+                  {/* Segment Header */}
+                  <div className="p-3.5 sm:p-4 border-b border-slate-100 bg-slate-50/70 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 shrink-0">
+                    <div className="flex items-center gap-2.5 min-w-0">
+                      <span className="px-2.5 py-1 rounded-xl text-xs font-black bg-purple-100 text-purple-800 border border-purple-200 shrink-0">
+                        {currentSegment.code}
                       </span>
                       <div className="min-w-0">
-                        <h3 className="font-extrabold text-sm text-slate-900 truncate">
-                          {segment.nombre}
-                        </h3>
-                        <p className="text-[11px] text-slate-500 truncate">
-                          {segment.description}
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <h3 className="font-extrabold text-sm sm:text-base text-slate-900">
+                            {currentSegment.nombre}
+                          </h3>
+                          <span className="text-[11px] text-slate-500 font-medium hidden md:inline">
+                            — {currentSegment.description}
+                          </span>
+                        </div>
+                        <p className="text-xs text-slate-500 mt-0.5 md:hidden">
+                          {currentSegment.description}
                         </p>
                       </div>
                     </div>
 
-                    <span className="px-2.5 py-1 rounded-full text-xs font-black bg-purple-50 text-purple-700 border border-purple-200 shrink-0">
-                      {segContacts.length}
-                    </span>
+                    <div className="flex items-center gap-2 self-start sm:self-auto shrink-0">
+                      <span className="px-3 py-1 rounded-full text-xs font-black bg-purple-50 text-purple-700 border border-purple-200">
+                        {segContacts.length} {segContacts.length === 1 ? 'cliente' : 'clientes'}
+                      </span>
+                    </div>
                   </div>
 
-                  {/* Contact List */}
-                  <div className="p-3 space-y-2 flex-1 max-h-96 overflow-y-auto">
+                  {/* Scrollable contact cards container */}
+                  <div className="flex-1 overflow-y-auto p-3 sm:p-4 min-h-0 space-y-2.5 [webkit-overflow-scrolling:touch]">
                     {segContacts.length === 0 ? (
-                      <div className="py-8 text-center text-xs text-slate-400">
-                        No hay clientes asignados a este segmento aún.
+                      <div className="py-16 text-center text-slate-400 flex flex-col items-center justify-center">
+                        <Users className="w-8 h-8 text-slate-300 mb-2" />
+                        <p className="font-bold text-slate-600 text-sm">
+                          Sin clientes en {currentSegment.code} — {currentSegment.nombre}
+                        </p>
+                        <p className="text-xs text-slate-400 mt-1 max-w-sm">
+                          Al clasificar contactos en este segmento comercial, aparecerán organizados aquí.
+                        </p>
                       </div>
                     ) : (
-                      segContacts.map((c) => (
-                        <div
-                          key={c.id}
-                          onClick={() => onOpenContact(c)}
-                          className="p-3 rounded-xl border border-slate-200/80 hover:border-purple-300 hover:bg-purple-50/20 transition cursor-pointer group shadow-2xs"
-                        >
-                          <div className="flex items-start justify-between gap-2">
-                            <div className="min-w-0">
-                              <h4 className="font-bold text-sm text-slate-900 group-hover:text-purple-700 transition truncate">
-                                {c.nombre}
-                              </h4>
-                              <div className="flex items-center gap-2 text-[11px] text-slate-500 mt-0.5">
-                                <span>{c.rolCargo}</span>
-                                <span>•</span>
-                                <span>{c.vecesQueCompro || '1 Compra'}</span>
+                      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
+                        {segContacts.map((c) => (
+                          <div
+                            key={c.id}
+                            onClick={() => onOpenContact(c)}
+                            className="p-3.5 rounded-xl border border-slate-200/90 hover:border-purple-300 hover:bg-purple-50/20 transition cursor-pointer group shadow-2xs bg-white flex flex-col justify-between"
+                          >
+                            <div>
+                              <div className="flex items-start justify-between gap-2">
+                                <div className="min-w-0">
+                                  <h4 className="font-bold text-sm text-slate-900 group-hover:text-purple-700 transition truncate">
+                                    {c.nombre}
+                                  </h4>
+                                  <div className="flex items-center gap-2 mt-0.5 flex-wrap">
+                                    <span className="text-[11px] text-slate-500 font-medium">
+                                      {c.rolCargo}
+                                    </span>
+                                    {c.tipoCliente && (
+                                      <span className="text-[10px] font-bold px-1.5 py-0.2 rounded bg-slate-100 text-slate-600">
+                                        {c.tipoCliente}
+                                      </span>
+                                    )}
+                                  </div>
+                                </div>
+
+                                <div
+                                  className="flex items-center gap-1 shrink-0"
+                                  onClick={(e) => e.stopPropagation()}
+                                >
+                                  {c.telefono && (
+                                    <>
+                                      <a
+                                        href={`tel:${c.telefono.replace(/\s+/g, '')}`}
+                                        className="p-1.5 rounded-lg text-emerald-700 bg-emerald-50 hover:bg-emerald-100 transition min-h-[36px] min-w-[36px] flex items-center justify-center border border-emerald-200/60"
+                                        title="Llamar"
+                                      >
+                                        <Phone className="w-3.5 h-3.5" />
+                                      </a>
+                                      <a
+                                        href={createWhatsAppUrl(c.telefono, c.nombre)}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="p-1.5 rounded-lg text-emerald-700 bg-emerald-50 hover:bg-emerald-100 transition min-h-[36px] min-w-[36px] flex items-center justify-center border border-emerald-200/60"
+                                        title="WhatsApp"
+                                      >
+                                        <MessageCircle className="w-3.5 h-3.5" />
+                                      </a>
+                                    </>
+                                  )}
+                                </div>
+                              </div>
+
+                              <div className="mt-2.5 pt-2 border-t border-slate-100 text-[11px] text-slate-500 space-y-1">
+                                {c.telefono && (
+                                  <div className="font-semibold text-slate-700">
+                                    📞 {formatPhoneNumber(c.telefono)}
+                                  </div>
+                                )}
+                                {c.direccion && (
+                                  <div className="truncate text-slate-400">
+                                    📍 {c.direccion}
+                                  </div>
+                                )}
+                                {c.empresa && (
+                                  <div className="truncate text-slate-500">
+                                    🏢 {c.empresa}
+                                  </div>
+                                )}
                               </div>
                             </div>
 
-                            {c.estadoContacto === 'Ganado' && (
-                              <span className="text-[10px] font-black text-emerald-700 bg-emerald-50 border border-emerald-200 px-1.5 py-0.5 rounded shrink-0">
-                                Ganado
+                            <div className="mt-3 pt-2 border-t border-slate-100 flex items-center justify-between text-[10px] text-slate-400">
+                              <span>Resp: <strong className="text-slate-600">{c.responsable || 'Sin asignar'}</strong></span>
+                              <span className="text-purple-700 font-bold group-hover:underline">
+                                Ver ficha →
                               </span>
-                            )}
-                          </div>
-
-                          <div className="mt-2.5 pt-2 border-t border-slate-100 flex items-center justify-between text-xs">
-                            <div className="flex items-center gap-1.5">
-                              {c.telefono && (
-                                <>
-                                  <span className="text-[11px] font-semibold text-slate-700">
-                                    {formatPhoneNumber(c.telefono)}
-                                  </span>
-                                  <a
-                                    href={`tel:${c.telefono.replace(/\s+/g, '')}`}
-                                    onClick={(e) => e.stopPropagation()}
-                                    title="Llamar"
-                                    className="p-1 min-h-[36px] min-w-[36px] flex items-center justify-center rounded-lg bg-slate-50 hover:bg-emerald-50 text-slate-600 hover:text-emerald-700 border border-slate-200"
-                                  >
-                                    <Phone className="w-3.5 h-3.5" />
-                                  </a>
-                                  <a
-                                    href={createWhatsAppUrl(c.telefono, c.nombre)}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    onClick={(e) => e.stopPropagation()}
-                                    title="WhatsApp"
-                                    className="p-1 min-h-[36px] min-w-[36px] flex items-center justify-center rounded-lg bg-slate-50 hover:bg-emerald-50 text-slate-600 hover:text-emerald-700 border border-slate-200"
-                                  >
-                                    <MessageCircle className="w-3.5 h-3.5 text-emerald-600" />
-                                  </a>
-                                </>
-                              )}
                             </div>
-
-                            <span className="text-[11px] text-purple-700 font-bold group-hover:underline">
-                              Ver ficha →
-                            </span>
                           </div>
-                        </div>
-                      ))
+                        ))}
+                      </div>
                     )}
                   </div>
                 </div>
               );
-            })}
+            })()}
           </div>
         </div>
       )}

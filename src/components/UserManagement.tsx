@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import {
   UserCheck,
   UserPlus,
@@ -110,11 +110,22 @@ export const UserManagement: React.FC = () => {
 
   // New user form state
   const [showAddForm, setShowAddForm] = useState(false);
+  const addFormRef = useRef<HTMLFormElement>(null);
   const [newNombre, setNewNombre] = useState('');
   const [newEmail, setNewEmail] = useState('');
   const [newTelefono, setNewTelefono] = useState('');
   const [newRol, setNewRol] = useState<UserRole>('vendedor');
   const [isSavingUser, setIsSavingUser] = useState(false);
+
+  const handleToggleAddForm = () => {
+    const nextState = !showAddForm;
+    setShowAddForm(nextState);
+    if (nextState) {
+      setTimeout(() => {
+        addFormRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }, 120);
+    }
+  };
 
   // Bulk Reassign state
   const [sourceVendor, setSourceVendor] = useState('');
@@ -193,7 +204,7 @@ export const UserManagement: React.FC = () => {
           </button>
 
           <button
-            onClick={() => setShowAddForm(!showAddForm)}
+            onClick={handleToggleAddForm}
             className="flex items-center gap-2 px-4 py-2.5 bg-[#FF8407] hover:bg-[#E57300] text-white text-xs font-bold rounded-xl shadow-xs transition active:scale-95"
           >
             <UserPlus className="w-4 h-4" />
@@ -247,6 +258,7 @@ export const UserManagement: React.FC = () => {
       {/* Add User Form Drawer / Card */}
       {showAddForm && (
         <form
+          ref={addFormRef}
           onSubmit={handleCreateUser}
           className="bg-white p-6 rounded-2xl border-2 border-[#FF8407]/30 shadow-md space-y-4 animate-in fade-in"
         >
