@@ -17,6 +17,7 @@ import {
   FileText,
   Tag,
   BarChart3,
+  Phone,
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useCrm } from '../context/CrmContext';
@@ -47,7 +48,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   onGoToKanban,
 }) => {
   const { userProfile, isAdmin } = useAuth();
-  const { contacts, allContacts, users } = useCrm();
+  const { contacts, allContacts, users, claimContact, updateContact } = useCrm();
 
   const [neglectedDaysThreshold, setNeglectedDaysThreshold] = useState<number>(14);
 
@@ -70,12 +71,30 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
     (c) => c.etapa === 'F6 — Cotización Enviada' || (c.etapa && c.etapa.startsWith('F6'))
   );
 
-  // Contacts without follow up for > X days
-  const neglectedContacts = (isAdmin ? allContacts : contacts).filter((c) => {
-    if (!c.fechaUltimoContacto) return true;
-    const days = daysSinceLastContact(c.fechaUltimoContacto);
-    return days !== null && days >= neglectedDaysThreshold;
-  });
+  // Contacts without follow up for > X days (sorted by most neglected first)
+  const neglectedContacts = useMemo(() => {
+    const source = isAdmin ? allContacts : contacts;
+    return source
+      .filter((c) => {
+        // Exclude won/lost contacts from neglected follow-ups if desired, but keep active prospects
+        if (c.estadoContacto === 'Ganado' || c.estadoContacto === 'Perdido' || c.etapa?.startsWith('M13')) {
+          return false;
+        }
+        if (!c.fechaUltimoContacto) return true;
+        const days = daysSinceLastContact(c.fechaUltimoContacto);
+        return days !== null && days >= neglectedDaysThreshold;
+      })
+      .map((c) => {
+        const days = daysSinceLastContact(c.fechaUltimoContacto);
+        return {
+          contact: c,
+          days,
+          // null/never contacted treated as infinity (top priority)
+          sortPriority: days === null ? 999999 : days,
+        };
+      })
+      .sort((a, b) => b.sortPriority - a.sortPriority);
+  }, [isAdmin, allContacts, contacts, neglectedDaysThreshold]);
 
   // Funnel stage distribution
   const funnelStageCounts = FUNNEL_STAGES.map((s) => {
@@ -647,50 +666,179 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
 
           {/* Neglected Contacts (No follow up > X days) */}
           <div className="bg-white rounded-2xl border border-slate-200 shadow-xs p-5">
-            <div className="flex items-center justify-between mb-4">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 mb-4">
               <h2 className="text-sm font-extrabold text-slate-900 uppercase tracking-wider flex items-center gap-2">
-                <AlertTriangle className="w-4 h-4 text-amber-500" />
+                <AlertTriangle className="w-4 h-4 text-amber-500 shrink-0" />
                 <span>Contactos Desatendidos</span>
               </h2>
 
-              <div className="flex items-center gap-1 text-xs">
-                <span className="text-slate-500">Sin contacto &gt;</span>
+              <div className="relative inline-block shrink-0">
                 <select
+                  id="neglected-days-threshold-select"
                   value={neglectedDaysThreshold}
                   onChange={(e) => setNeglectedDaysThreshold(Number(e.target.value))}
-                  className="bg-slate-100 border border-slate-200 rounded px-2 py-0.5 font-bold text-slate-700"
+                  className="bg-slate-100 hover:bg-slate-200/80 border border-slate-200 rounded-lg px-2.5 py-1 text-xs font-bold text-slate-700 cursor-pointer focus:outline-none focus:ring-2 focus:ring-amber-500 transition"
+                  title="Cambiar umbral de días sin contacto"
                 >
-                  <option value={7}>7 días</option>
-                  <option value={14}>14 días</option>
-                  <option value={30}>30 días</option>
-                  <option value={60}>60 días</option>
+                  <option value={7}>Umbral: 7+ días sin contacto ▾</option>
+                  <option value={14}>Umbral: 14+ días sin contacto ▾</option>
+                  <option value={30}>Umbral: 30+ días sin contacto ▾</option>
+                  <option value={60}>Umbral: 60+ días sin contacto ▾</option>
                 </select>
               </div>
             </div>
 
-            <div className="space-y-2 max-h-64 overflow-y-auto">
+            <div className="space-y-2.5 max-h-80 overflow-y-auto pr-1">
               {neglectedContacts.length === 0 ? (
-                <div className="py-6 text-center text-slate-400 text-xs">
-                  👏 Todo el equipo está al día con los clientes.
+                <div className="py-8 text-center text-slate-400 text-xs">
+                  👏 Todo el equipo está al día con los clientes para este umbral de {neglectedDaysThreshold} días.
                 </div>
               ) : (
-                neglectedContacts.slice(0, 10).map((c) => {
-                  const days = daysSinceLastContact(c.fechaUltimoContacto);
+                neglectedContacts.slice(0, 15).map(({ contact: c, days }) => {
+                  const isUnassigned =
+                    !c.responsable ||
+                    c.responsable.toLowerCase().trim() === 'sin asignar' ||
+                    c.responsable.toLowerCase().trim() === 'unassigned';
+
                   return (
                     <div
                       key={c.id}
                       onClick={() => onOpenContact(c)}
-                      className="p-3 rounded-xl bg-amber-50/50 hover:bg-amber-100/60 border border-amber-200/80 flex flex-col sm:flex-row sm:items-center justify-between gap-2 cursor-pointer transition text-xs"
+                      className="p-3.5 rounded-xl bg-amber-50/60 hover:bg-amber-100/70 border border-amber-200/90 flex flex-col justify-between gap-2.5 cursor-pointer transition text-xs group shadow-2xs"
                     >
-                      <div className="min-w-0">
-                        <div className="font-bold text-slate-900 truncate">{c.nombre}</div>
-                        <div className="text-[10px] text-slate-500 mt-0.5">
-                          Resp: <span className="font-semibold text-slate-700">{c.responsable}</span> • {c.rolCargo}
+                      {/* Línea 1: Nombre del contacto + badge pequeño de la etapa */}
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="font-bold text-slate-900 group-hover:text-amber-900 transition truncate text-sm">
+                          {c.nombre}
+                        </span>
+                        {c.etapa && (
+                          <span className="text-[10px] font-black px-2 py-0.5 rounded-md bg-white text-slate-700 border border-slate-200 shrink-0">
+                            {c.etapa.split('—')[0].trim()}
+                          </span>
+                        )}
+                      </div>
+
+                      {/* Línea 2: Rol/Cargo seguido del teléfono con ícono sin puntos sueltos */}
+                      <div className="flex items-center gap-2 text-[11px] text-slate-600 flex-wrap">
+                        {c.rolCargo && (
+                          <span className="font-medium text-slate-700">{c.rolCargo}</span>
+                        )}
+                        {c.rolCargo && c.telefono && (
+                          <span className="text-slate-300">•</span>
+                        )}
+                        {c.telefono && (
+                          <span className="inline-flex items-center gap-1 font-semibold text-slate-700">
+                            <Phone className="w-3 h-3 text-slate-400 shrink-0" />
+                            <span>{formatPhoneNumber(c.telefono)}</span>
+                          </span>
+                        )}
+                        {c.responsable && !isUnassigned && (
+                          <>
+                            {(c.rolCargo || c.telefono) && <span className="text-slate-300">•</span>}
+                            <span className="text-slate-400">
+                              Resp: <strong className="text-slate-600 font-semibold">{c.responsable.split(' ')[0]}</strong>
+                            </span>
+                          </>
+                        )}
+                      </div>
+
+                      {/* Línea 3 (fila inferior): Badge a la izquierda, acciones rápidas (+ Tomar, llamar, WhatsApp) a la derecha */}
+                      <div className="pt-2 border-t border-amber-200/60 flex items-center justify-between gap-2">
+                        {/* Izquierda: Badge de estado */}
+                        <span
+                          className={`text-[10px] sm:text-[11px] font-bold px-2.5 py-1 rounded-lg border whitespace-nowrap ${
+                            days === null
+                              ? 'bg-rose-50 text-rose-800 border-rose-200'
+                              : days >= 30
+                              ? 'bg-red-50 text-red-800 border-red-200 font-black'
+                              : 'bg-white text-amber-900 border-amber-200'
+                          }`}
+                        >
+                          {days !== null ? `${days} días sin contacto` : 'Nunca contactado'}
+                        </span>
+
+                        {/* Derecha: Acciones rápidas */}
+                        <div
+                          className="flex items-center gap-1.5 shrink-0"
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          {/* Botón "+ Tomar" si está sin asignar */}
+                          {isUnassigned && (
+                            isAdmin ? (
+                              <div className="relative inline-flex items-center">
+                                <button
+                                  type="button"
+                                  className="text-[10px] font-bold px-2.5 py-1 rounded-lg bg-emerald-50 text-emerald-700 hover:bg-emerald-100 border border-emerald-300 transition flex items-center gap-1 shadow-2xs cursor-pointer active:scale-95"
+                                  title="Asignar este contacto a un vendedor"
+                                >
+                                  <span>+ Tomar</span>
+                                </button>
+                                <select
+                                  value=""
+                                  onChange={async (e) => {
+                                    const val = e.target.value;
+                                    if (!val) return;
+                                    if (val === '__me__') {
+                                      await claimContact(c.id);
+                                    } else {
+                                      await updateContact(c.id, { responsable: val });
+                                    }
+                                  }}
+                                  className="absolute inset-0 w-full h-full opacity-0 cursor-pointer text-xs"
+                                  title="Asignar a un vendedor"
+                                >
+                                  <option value="" disabled>Seleccionar responsable...</option>
+                                  <option value="__me__">Tomar para mí ({userProfile?.nombre?.split(' ')[0] || 'Admin'})</option>
+                                  <optgroup label="Asignar a vendedor">
+                                    {users
+                                      .filter((u) => u.activo !== false)
+                                      .map((u) => (
+                                        <option key={u.id} value={u.nombre}>
+                                          {u.nombre} {u.rol ? `(${u.rol})` : ''}
+                                        </option>
+                                      ))}
+                                  </optgroup>
+                                </select>
+                              </div>
+                            ) : (
+                              <button
+                                type="button"
+                                onClick={async () => {
+                                  await claimContact(c.id);
+                                }}
+                                className="text-[10px] font-bold px-2.5 py-1 rounded-lg bg-emerald-50 text-emerald-700 hover:bg-emerald-100 border border-emerald-300 transition flex items-center gap-1 shadow-2xs active:scale-95 cursor-pointer"
+                                title="Asignarme este contacto"
+                              >
+                                <span>+ Tomar</span>
+                              </button>
+                            )
+                          )}
+
+                          {/* Botón Llamar */}
+                          {c.telefono && (
+                            <a
+                              href={`tel:${c.telefono.replace(/\s+/g, '')}`}
+                              className="p-1.5 rounded-lg text-slate-700 bg-white hover:bg-emerald-50 hover:text-emerald-700 border border-slate-200 transition min-h-[32px] min-w-[32px] flex items-center justify-center shadow-2xs"
+                              title="Llamar al cliente"
+                            >
+                              <Phone className="w-3.5 h-3.5" />
+                            </a>
+                          )}
+
+                          {/* Botón WhatsApp */}
+                          {c.telefono && (
+                            <a
+                              href={createWhatsAppUrl(c.telefono, c.nombre)}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="p-1.5 rounded-lg text-emerald-700 bg-white hover:bg-emerald-50 border border-slate-200 transition min-h-[32px] min-w-[32px] flex items-center justify-center shadow-2xs"
+                              title="Enviar WhatsApp"
+                            >
+                              <MessageCircle className="w-3.5 h-3.5" />
+                            </a>
+                          )}
                         </div>
                       </div>
-                      <span className="text-[11px] font-bold text-amber-900 bg-white px-2.5 py-1 rounded-lg border border-amber-200 whitespace-nowrap shrink-0 self-start sm:self-auto">
-                        {days !== null ? `${days} días sin contacto` : 'Nunca contactado'}
-                      </span>
                     </div>
                   );
                 })

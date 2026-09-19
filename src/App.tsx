@@ -21,6 +21,17 @@ const MainApp: React.FC = () => {
   const [isContactModalOpen, setIsContactModalOpen] = useState(false);
   const [isNewContact, setIsNewContact] = useState(false);
 
+  // Fix: Reset page scroll position to top whenever changing sections (from mobile bottom nav or desktop nav)
+  useEffect(() => {
+    window.scrollTo({ top: 0, left: 0, behavior: 'instant' as ScrollBehavior });
+    document.documentElement.scrollTop = 0;
+    document.body.scrollTop = 0;
+    const mainEl = document.querySelector('main');
+    if (mainEl) {
+      mainEl.scrollTop = 0;
+    }
+  }, [activeTab]);
+
   // Test Firestore connection on startup conforming to skill
   useEffect(() => {
     testFirestoreConnection();

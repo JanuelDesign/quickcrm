@@ -40,6 +40,14 @@ export const Navbar: React.FC<NavbarProps> = ({
 
   const [showOverdueDropdown, setShowOverdueDropdown] = useState(false);
 
+  // Helper to change tab and ensure scroll resets to top
+  const handleSelectTab = (tab: ActiveTab) => {
+    setActiveTab(tab);
+    window.scrollTo({ top: 0, left: 0, behavior: 'instant' as ScrollBehavior });
+    document.documentElement.scrollTop = 0;
+    document.body.scrollTop = 0;
+  };
+
   // Overdue and today follow-ups
   const overdueContacts = contacts.filter(
     (c) =>
@@ -109,7 +117,7 @@ export const Navbar: React.FC<NavbarProps> = ({
           <nav className="hidden md:flex items-center gap-1 bg-slate-100/90 p-1 rounded-xl border border-slate-200">
             <button
               id="nav-tab-kanban"
-              onClick={() => setActiveTab('kanban')}
+              onClick={() => handleSelectTab('kanban')}
               className={`flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-sm font-semibold transition ${
                 activeTab === 'kanban'
                   ? 'bg-white text-slate-900 shadow-xs border border-slate-200/80'
@@ -122,7 +130,7 @@ export const Navbar: React.FC<NavbarProps> = ({
 
             <button
               id="nav-tab-list"
-              onClick={() => setActiveTab('list')}
+              onClick={() => handleSelectTab('list')}
               className={`flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-sm font-semibold transition ${
                 activeTab === 'list'
                   ? 'bg-white text-slate-900 shadow-xs border border-slate-200/80'
@@ -135,7 +143,7 @@ export const Navbar: React.FC<NavbarProps> = ({
 
             <button
               id="nav-tab-dashboard"
-              onClick={() => setActiveTab('dashboard')}
+              onClick={() => handleSelectTab('dashboard')}
               className={`flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-sm font-semibold transition ${
                 activeTab === 'dashboard'
                   ? 'bg-white text-slate-900 shadow-xs border border-slate-200/80'
@@ -151,7 +159,7 @@ export const Navbar: React.FC<NavbarProps> = ({
               <>
                 <button
                   id="nav-tab-csv"
-                  onClick={() => setActiveTab('csv')}
+                  onClick={() => handleSelectTab('csv')}
                   className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-semibold transition ${
                     activeTab === 'csv'
                       ? 'bg-white text-slate-900 shadow-xs border border-slate-200/80'
@@ -165,7 +173,7 @@ export const Navbar: React.FC<NavbarProps> = ({
 
                 <button
                   id="nav-tab-users"
-                  onClick={() => setActiveTab('users')}
+                  onClick={() => handleSelectTab('users')}
                   className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-semibold transition ${
                     activeTab === 'users'
                       ? 'bg-white text-slate-900 shadow-xs border border-slate-200/80'
@@ -329,7 +337,7 @@ export const Navbar: React.FC<NavbarProps> = ({
         className="fixed bottom-0 left-0 right-0 z-40 bg-white/95 backdrop-blur-md border-t border-slate-200 shadow-[0_-4px_20px_rgba(0,0,0,0.07)] py-1 px-2 md:hidden flex items-center justify-around pb-safe"
       >
         <button
-          onClick={() => setActiveTab('kanban')}
+          onClick={() => handleSelectTab('kanban')}
           className={`flex-1 flex flex-col items-center justify-center min-h-[48px] py-1 rounded-xl text-[11px] font-bold transition active:scale-95 ${
             activeTab === 'kanban' ? 'text-[#FF8407] bg-orange-50/80' : 'text-slate-500 hover:text-slate-800'
           }`}
@@ -339,7 +347,7 @@ export const Navbar: React.FC<NavbarProps> = ({
         </button>
 
         <button
-          onClick={() => setActiveTab('list')}
+          onClick={() => handleSelectTab('list')}
           className={`flex-1 flex flex-col items-center justify-center min-h-[48px] py-1 rounded-xl text-[11px] font-bold transition active:scale-95 ${
             activeTab === 'list' ? 'text-[#FF8407] bg-orange-50/80' : 'text-slate-500 hover:text-slate-800'
           }`}
@@ -349,7 +357,7 @@ export const Navbar: React.FC<NavbarProps> = ({
         </button>
 
         <button
-          onClick={() => setActiveTab('dashboard')}
+          onClick={() => handleSelectTab('dashboard')}
           className={`flex-1 flex flex-col items-center justify-center min-h-[48px] py-1 rounded-xl text-[11px] font-bold transition active:scale-95 ${
             activeTab === 'dashboard' ? 'text-[#FF8407] bg-orange-50/80' : 'text-slate-500 hover:text-slate-800'
           }`}
@@ -360,7 +368,7 @@ export const Navbar: React.FC<NavbarProps> = ({
 
         {isAdmin && (
           <button
-            onClick={() => setActiveTab('csv')}
+            onClick={() => handleSelectTab('csv')}
             className={`flex-1 flex flex-col items-center justify-center min-h-[48px] py-1 rounded-xl text-[11px] font-bold transition active:scale-95 ${
               activeTab === 'csv' ? 'text-[#FF8407] bg-orange-50/80' : 'text-slate-500 hover:text-slate-800'
             }`}
@@ -372,7 +380,7 @@ export const Navbar: React.FC<NavbarProps> = ({
 
         {isAdmin && (
           <button
-            onClick={() => setActiveTab('users')}
+            onClick={() => handleSelectTab('users')}
             className={`flex-1 flex flex-col items-center justify-center min-h-[48px] py-1 rounded-xl text-[11px] font-bold transition active:scale-95 ${
               activeTab === 'users' ? 'text-[#FF8407] bg-orange-50/80' : 'text-slate-500 hover:text-slate-800'
             }`}

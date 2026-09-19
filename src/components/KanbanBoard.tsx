@@ -583,22 +583,31 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({
       {/* Top Header & Tab Switcher Bar */}
       <div className="bg-white border-b border-slate-200/90 px-3 sm:px-4 py-2 shrink-0 shadow-2xs">
         <div className="max-w-7xl mx-auto flex items-center justify-between gap-2 overflow-hidden">
-          {/* Main Tabs Navigation (Smooth touch scroll, no wrapping) */}
-          <div className="flex items-center gap-1.5 p-1 bg-slate-100 rounded-xl border border-slate-200 overflow-x-auto no-scrollbar [webkit-overflow-scrolling:touch] max-w-full">
+          {/* Main Tabs Navigation */}
+          {/* Mobile view (< sm): bottom-nav icon style (icon top, short text bottom, notification badge top-right), fits on 1 screen */}
+          {/* Desktop view (>= sm): horizontal pills with icon and badge */}
+          <div className="flex items-center gap-1 sm:gap-1.5 p-1 bg-slate-100 rounded-xl border border-slate-200 w-full sm:w-auto justify-between sm:justify-start">
             {/* Tab: Embudo */}
             <button
               id="tab-embudo-button"
               onClick={() => setActiveTab('embudo')}
-              className={`flex items-center gap-1.5 sm:gap-2 px-3 sm:px-3.5 py-1.5 min-h-[40px] rounded-lg text-xs font-bold transition-all cursor-pointer whitespace-nowrap shrink-0 ${
+              className={`relative flex-1 sm:flex-initial flex flex-col sm:flex-row items-center justify-center gap-0.5 sm:gap-2 px-2.5 sm:px-3.5 py-1.5 min-h-[46px] sm:min-h-[40px] rounded-lg text-[11px] sm:text-xs font-bold transition-all cursor-pointer ${
                 activeTab === 'embudo'
                   ? 'bg-white text-slate-900 shadow-xs border border-slate-200/80'
                   : 'text-slate-600 hover:text-slate-900 hover:bg-white/50'
               }`}
             >
-              <Layers className={`w-3.5 h-3.5 ${activeTab === 'embudo' ? 'text-[#FF8407]' : 'text-slate-400'}`} />
-              <span>Embudo</span>
+              <div className="relative flex items-center justify-center">
+                <Layers className={`w-4 h-4 sm:w-3.5 sm:h-3.5 ${activeTab === 'embudo' ? 'text-[#FF8407]' : 'text-slate-400'}`} />
+                {/* Mobile Notification Badge (top-right of icon) */}
+                <span className="sm:hidden absolute -top-1.5 -right-3 min-w-[16px] h-4 px-1 rounded-full text-[9px] font-black flex items-center justify-center bg-[#FF8407] text-white shadow-xs">
+                  {activeFunnelCount}
+                </span>
+              </div>
+              <span className="leading-tight">Embudo</span>
+              {/* Desktop inline pill badge */}
               <span
-                className={`text-[10px] font-black px-1.5 py-0.2 rounded-full ${
+                className={`hidden sm:inline-block text-[10px] font-black px-1.5 py-0.2 rounded-full ${
                   activeTab === 'embudo'
                     ? 'bg-orange-100 text-[#EA580C]'
                     : 'bg-slate-200 text-slate-600'
@@ -612,16 +621,23 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({
             <button
               id="tab-segmentos-button"
               onClick={() => setActiveTab('segmentos')}
-              className={`flex items-center gap-1.5 sm:gap-2 px-3 sm:px-3.5 py-1.5 min-h-[40px] rounded-lg text-xs font-bold transition-all cursor-pointer whitespace-nowrap shrink-0 ${
+              className={`relative flex-1 sm:flex-initial flex flex-col sm:flex-row items-center justify-center gap-0.5 sm:gap-2 px-2.5 sm:px-3.5 py-1.5 min-h-[46px] sm:min-h-[40px] rounded-lg text-[11px] sm:text-xs font-bold transition-all cursor-pointer ${
                 activeTab === 'segmentos'
                   ? 'bg-white text-slate-900 shadow-xs border border-slate-200/80'
                   : 'text-slate-600 hover:text-slate-900 hover:bg-white/50'
               }`}
             >
-              <Users className={`w-3.5 h-3.5 ${activeTab === 'segmentos' ? 'text-purple-600' : 'text-slate-400'}`} />
-              <span>Segmentos</span>
+              <div className="relative flex items-center justify-center">
+                <Users className={`w-4 h-4 sm:w-3.5 sm:h-3.5 ${activeTab === 'segmentos' ? 'text-purple-600' : 'text-slate-400'}`} />
+                {/* Mobile Notification Badge (top-right of icon) */}
+                <span className="sm:hidden absolute -top-1.5 -right-3 min-w-[16px] h-4 px-1 rounded-full text-[9px] font-black flex items-center justify-center bg-purple-600 text-white shadow-xs">
+                  {segmentedCount}
+                </span>
+              </div>
+              <span className="leading-tight">Segmentos</span>
+              {/* Desktop inline pill badge */}
               <span
-                className={`text-[10px] font-black px-1.5 py-0.2 rounded-full ${
+                className={`hidden sm:inline-block text-[10px] font-black px-1.5 py-0.2 rounded-full ${
                   activeTab === 'segmentos'
                     ? 'bg-purple-100 text-purple-700'
                     : 'bg-slate-200 text-slate-600'
@@ -635,16 +651,26 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({
             <button
               id="tab-lista-negra-button"
               onClick={() => setActiveTab('lista_negra')}
-              className={`flex items-center gap-1.5 sm:gap-2 px-3 sm:px-3.5 py-1.5 min-h-[40px] rounded-lg text-xs font-bold transition-all cursor-pointer whitespace-nowrap shrink-0 ${
+              className={`relative flex-1 sm:flex-initial flex flex-col sm:flex-row items-center justify-center gap-0.5 sm:gap-2 px-2.5 sm:px-3.5 py-1.5 min-h-[46px] sm:min-h-[40px] rounded-lg text-[11px] sm:text-xs font-bold transition-all cursor-pointer ${
                 activeTab === 'lista_negra'
                   ? 'bg-stone-900 text-red-300 shadow-xs border border-red-800'
                   : 'text-slate-600 hover:text-red-700 hover:bg-red-50'
               }`}
             >
-              <ShieldAlert className={`w-3.5 h-3.5 ${activeTab === 'lista_negra' ? 'text-red-400' : 'text-slate-400'}`} />
-              <span>M13 Lista Negra</span>
+              <div className="relative flex items-center justify-center">
+                <ShieldAlert className={`w-4 h-4 sm:w-3.5 sm:h-3.5 ${activeTab === 'lista_negra' ? 'text-red-400' : 'text-slate-400'}`} />
+                {/* Mobile Notification Badge (top-right of icon) */}
+                <span className="sm:hidden absolute -top-1.5 -right-3 min-w-[16px] h-4 px-1 rounded-full text-[9px] font-black flex items-center justify-center bg-red-600 text-white shadow-xs">
+                  {blacklistCount}
+                </span>
+              </div>
+              <span className="leading-tight">
+                <span className="sm:hidden">M13 Negra</span>
+                <span className="hidden sm:inline">M13 Lista Negra</span>
+              </span>
+              {/* Desktop inline pill badge */}
               <span
-                className={`text-[10px] font-black px-1.5 py-0.2 rounded-full ${
+                className={`hidden sm:inline-block text-[10px] font-black px-1.5 py-0.2 rounded-full ${
                   activeTab === 'lista_negra'
                     ? 'bg-red-900/60 text-red-200 border border-red-700'
                     : 'bg-slate-200 text-slate-600'
