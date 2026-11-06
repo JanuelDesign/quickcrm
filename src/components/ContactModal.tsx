@@ -92,6 +92,7 @@ export const ContactModal: React.FC<ContactModalProps> = ({
 
   // Form State
   const [nombre, setNombre] = useState('');
+  const [personaEncargada, setPersonaEncargada] = useState('');
   const [telefono, setTelefono] = useState('');
   const [correo, setCorreo] = useState('');
   const [direccion, setDireccion] = useState('');
@@ -203,6 +204,7 @@ export const ContactModal: React.FC<ContactModalProps> = ({
   useEffect(() => {
     if (contact) {
       setNombre(contact.nombre || '');
+      setPersonaEncargada(contact.personaEncargada || '');
       setTelefono(contact.telefono || '');
       setCorreo(contact.correo || '');
       setDireccion(contact.direccion || '');
@@ -227,6 +229,7 @@ export const ContactModal: React.FC<ContactModalProps> = ({
       setActiveTab('datos');
     } else {
       setNombre('');
+      setPersonaEncargada('');
       setTelefono('');
       setCorreo('');
       setDireccion('');
@@ -314,6 +317,7 @@ export const ContactModal: React.FC<ContactModalProps> = ({
     try {
       const payload = {
         nombre: nombre.trim(),
+        personaEncargada: personaEncargada.trim() || undefined,
         telefono: telefono.trim(),
         correo: correo.trim() || undefined,
         direccion: direccion.trim() || undefined,
@@ -498,6 +502,14 @@ export const ContactModal: React.FC<ContactModalProps> = ({
             <h2 className="text-lg sm:text-2xl font-black text-slate-900 tracking-tight truncate">
               {isNew ? 'Registrar Cliente / Contratista' : nombre || 'Sin Nombre'}
             </h2>
+            {!isNew && personaEncargada && (
+              <div className="flex items-center gap-1.5 text-xs text-slate-600 font-medium truncate mt-0.5">
+                <User className="w-3.5 h-3.5 text-[#FF8407] shrink-0" />
+                <span className="truncate">
+                  Encargado: <strong className="text-slate-800 font-semibold">{personaEncargada}</strong>
+                </span>
+              </div>
+            )}
           </div>
 
           <button
@@ -671,9 +683,23 @@ export const ContactModal: React.FC<ContactModalProps> = ({
                     <input
                       type="text"
                       required
-                      placeholder="Ej. Marcos Delgado — MD Floors LLC"
+                      placeholder="Ej. MD Floors LLC / Quicksurfaces B2B"
                       value={nombre}
                       onChange={(e) => setNombre(e.target.value)}
+                      className="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm text-slate-900 focus:outline-none focus:border-[#FF8407] focus:bg-white transition"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-bold text-slate-700 mb-1 flex items-center justify-between">
+                      <span>Nombre de Persona Encargada</span>
+                      <span className="text-[10px] text-slate-400 font-normal">Contacto directo</span>
+                    </label>
+                    <input
+                      type="text"
+                      placeholder="Ej. Marcos Delgado (Gerente / Comprador)"
+                      value={personaEncargada}
+                      onChange={(e) => setPersonaEncargada(e.target.value)}
                       className="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm text-slate-900 focus:outline-none focus:border-[#FF8407] focus:bg-white transition"
                     />
                   </div>
@@ -705,7 +731,7 @@ export const ContactModal: React.FC<ContactModalProps> = ({
                     />
                   </div>
 
-                  <div>
+                  <div className="sm:col-span-2">
                     <label className="block text-xs font-bold text-slate-700 mb-1">
                       Dirección / Ubicación en Miami
                     </label>
@@ -1208,7 +1234,7 @@ export const ContactModal: React.FC<ContactModalProps> = ({
 
                   {/* WhatsApp Directo */}
                   <a
-                    href={telefono ? createWhatsAppUrl(telefono, nombre) : '#'}
+                    href={telefono ? createWhatsAppUrl(telefono, personaEncargada || nombre) : '#'}
                     target="_blank"
                     rel="noopener noreferrer"
                     className={`flex items-center justify-center gap-2.5 px-4 py-3.5 min-h-[52px] rounded-2xl font-bold text-sm shadow-xs transition active:scale-98 ${

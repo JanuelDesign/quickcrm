@@ -68,6 +68,7 @@ export interface NotaHistorial {
 export interface Contacto {
   id: string;
   nombre: string;
+  personaEncargada?: string; // Nombre de la persona encargada o contacto directo en la empresa
   telefono: string;
   correo?: string;
   direccion?: string;

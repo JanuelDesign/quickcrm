@@ -5,6 +5,7 @@ import {
   Calendar,
   AlertCircle,
   UserCheck,
+  User,
   Building2,
   Clock,
   Sparkles,
@@ -55,7 +56,7 @@ export const ContactCard: React.FC<ContactCardProps> = ({
   const handleWhatsApp = (e: React.MouseEvent) => {
     e.stopPropagation();
     if (contact.telefono) {
-      const url = createWhatsAppUrl(contact.telefono, contact.nombre);
+      const url = createWhatsAppUrl(contact.telefono, contact.personaEncargada || contact.nombre);
       window.open(url, '_blank', 'noopener,noreferrer');
     }
   };
@@ -117,6 +118,14 @@ export const ContactCard: React.FC<ContactCardProps> = ({
       <h4 className="font-bold text-slate-900 text-sm leading-snug group-hover:text-[#FF8407] transition line-clamp-2">
         {contact.nombre}
       </h4>
+
+      {/* Persona Encargada (si está registrada) */}
+      {contact.personaEncargada && (
+        <div className="flex items-center gap-1 mt-0.5 text-xs text-slate-600 font-medium truncate" title={`Persona encargada: ${contact.personaEncargada}`}>
+          <User className="w-3 h-3 text-[#FF8407] shrink-0" />
+          <span className="truncate">Encargado: <strong className="text-slate-800 font-semibold">{contact.personaEncargada}</strong></span>
+        </div>
+      )}
 
       {/* Location if Miami Dade */}
       {contact.direccion && (

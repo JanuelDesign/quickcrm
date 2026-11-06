@@ -148,6 +148,7 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({
       if (searchQuery.trim()) {
         const q = normalizeSearchText(searchQuery);
         const matchesName = normalizeSearchText(contact.nombre).includes(q);
+        const matchesPersona = normalizeSearchText(contact.personaEncargada).includes(q);
         const matchesPhone = normalizeSearchText(contact.telefono).includes(q);
         const matchesCargo = normalizeSearchText(contact.rolCargo).includes(q);
         const matchesSeg = normalizeSearchText(contact.segmento).includes(q);
@@ -157,7 +158,7 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({
           ? contact.notas.some((n) => normalizeSearchText(n.texto).includes(q))
           : typeof contact.notas === 'string' && normalizeSearchText(contact.notas).includes(q);
 
-        if (!matchesName && !matchesPhone && !matchesCargo && !matchesSeg && !matchesEmail && !matchesDir && !matchesNotes) {
+        if (!matchesName && !matchesPersona && !matchesPhone && !matchesCargo && !matchesSeg && !matchesEmail && !matchesDir && !matchesNotes) {
           return false;
         }
       }
@@ -549,6 +550,13 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({
                 <h4 className="font-bold text-slate-900 text-sm group-hover:text-emerald-700 transition">
                   {contact.nombre}
                 </h4>
+
+                {contact.personaEncargada && (
+                  <div className="flex items-center gap-1 mt-0.5 text-xs text-slate-600 font-medium truncate" title={`Persona encargada: ${contact.personaEncargada}`}>
+                    <User className="w-3 h-3 text-[#FF8407] shrink-0" />
+                    <span>Encargado: <strong className="text-slate-800 font-semibold">{contact.personaEncargada}</strong></span>
+                  </div>
+                )}
 
                 <div className="mt-1 flex items-center justify-between text-[11px] text-slate-500">
                   <span>{contact.rolCargo}</span>
@@ -1007,6 +1015,12 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({
                                   <h4 className="font-bold text-sm text-slate-900 group-hover:text-purple-700 transition truncate">
                                     {c.nombre}
                                   </h4>
+                                  {c.personaEncargada && (
+                                    <div className="flex items-center gap-1 mt-0.5 text-xs text-slate-600 font-medium truncate">
+                                      <User className="w-3 h-3 text-purple-600 shrink-0" />
+                                      <span>Encargado: <strong className="text-slate-800 font-semibold">{c.personaEncargada}</strong></span>
+                                    </div>
+                                  )}
                                   <div className="flex items-center gap-2 mt-0.5 flex-wrap">
                                     <span className="text-[11px] text-slate-500 font-medium">
                                       {c.rolCargo}
@@ -1033,7 +1047,7 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({
                                         <Phone className="w-3.5 h-3.5" />
                                       </a>
                                       <a
-                                        href={createWhatsAppUrl(c.telefono, c.nombre)}
+                                        href={createWhatsAppUrl(c.telefono, c.personaEncargada || c.nombre)}
                                         target="_blank"
                                         rel="noopener noreferrer"
                                         className="p-1.5 rounded-lg text-emerald-700 bg-emerald-50 hover:bg-emerald-100 transition min-h-[36px] min-w-[36px] flex items-center justify-center border border-emerald-200/60"
@@ -1055,11 +1069,6 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({
                                 {c.direccion && (
                                   <div className="truncate text-slate-400">
                                     📍 {c.direccion}
-                                  </div>
-                                )}
-                                {c.empresa && (
-                                  <div className="truncate text-slate-500">
-                                    🏢 {c.empresa}
                                   </div>
                                 )}
                               </div>
@@ -1142,10 +1151,10 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({
                         <h4 className="text-sm font-extrabold text-white group-hover:text-red-300 transition">
                           {contact.nombre}
                         </h4>
-                        {contact.empresa && (
-                          <div className="text-xs text-stone-400 flex items-center gap-1 mt-0.5">
-                            <Building className="w-3 h-3 text-stone-500" />
-                            <span>{contact.empresa}</span>
+                        {contact.personaEncargada && (
+                          <div className="text-xs text-stone-300 flex items-center gap-1 mt-0.5">
+                            <User className="w-3 h-3 text-red-400" />
+                            <span>Encargado: <strong className="text-stone-200 font-semibold">{contact.personaEncargada}</strong></span>
                           </div>
                         )}
                       </div>

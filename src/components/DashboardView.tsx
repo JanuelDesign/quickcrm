@@ -18,6 +18,7 @@ import {
   Tag,
   BarChart3,
   Phone,
+  User,
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useCrm } from '../context/CrmContext';
@@ -345,6 +346,11 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                         <span className="text-[10px] text-slate-400">({c.rolCargo})</span>
                       </div>
                       <p className="text-[11px] text-slate-500">
+                        {c.personaEncargada && (
+                          <span className="font-semibold text-slate-700 mr-1.5">
+                            Encargado: {c.personaEncargada} •
+                          </span>
+                        )}
                         Etapa: <strong className="text-slate-700">{c.etapa}</strong> • Resp:{' '}
                         {c.responsable}
                       </p>
@@ -374,7 +380,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                     </a>
 
                     <a
-                      href={createWhatsAppUrl(c.telefono, c.nombre)}
+                      href={createWhatsAppUrl(c.telefono, c.personaEncargada || c.nombre)}
                       target="_blank"
                       rel="noopener noreferrer"
                       title="Abrir WhatsApp"
@@ -718,8 +724,17 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                         )}
                       </div>
 
-                      {/* Línea 2: Rol/Cargo seguido del teléfono con ícono sin puntos sueltos */}
+                      {/* Línea 2: Persona encargada + Rol/Cargo seguido del teléfono con ícono sin puntos sueltos */}
                       <div className="flex items-center gap-2 text-[11px] text-slate-600 flex-wrap">
+                        {c.personaEncargada && (
+                          <span className="inline-flex items-center gap-1 font-semibold text-slate-800" title={`Persona encargada: ${c.personaEncargada}`}>
+                            <User className="w-3 h-3 text-[#FF8407] shrink-0" />
+                            <span>{c.personaEncargada}</span>
+                          </span>
+                        )}
+                        {c.personaEncargada && (c.rolCargo || c.telefono) && (
+                          <span className="text-slate-300">•</span>
+                        )}
                         {c.rolCargo && (
                           <span className="font-medium text-slate-700">{c.rolCargo}</span>
                         )}
@@ -734,7 +749,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                         )}
                         {c.responsable && !isUnassigned && (
                           <>
-                            {(c.rolCargo || c.telefono) && <span className="text-slate-300">•</span>}
+                            {(c.personaEncargada || c.rolCargo || c.telefono) && <span className="text-slate-300">•</span>}
                             <span className="text-slate-400">
                               Resp: <strong className="text-slate-600 font-semibold">{c.responsable.split(' ')[0]}</strong>
                             </span>
@@ -828,7 +843,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                           {/* Botón WhatsApp */}
                           {c.telefono && (
                             <a
-                              href={createWhatsAppUrl(c.telefono, c.nombre)}
+                              href={createWhatsAppUrl(c.telefono, c.personaEncargada || c.nombre)}
                               target="_blank"
                               rel="noopener noreferrer"
                               className="p-1.5 rounded-lg text-emerald-700 bg-white hover:bg-emerald-50 border border-slate-200 transition min-h-[32px] min-w-[32px] flex items-center justify-center shadow-2xs"

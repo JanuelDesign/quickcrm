@@ -140,6 +140,7 @@ export const CsvImportExport: React.FC<CsvImportExportProps> = ({
   const handleExportAll = () => {
     const dataToExport = allContacts.map((c) => ({
       Nombre: c.nombre,
+      'Persona Encargada': c.personaEncargada || '',
       Teléfono: c.telefono,
       Correo: c.correo || '',
       Dirección: c.direccion || '',
@@ -516,7 +517,14 @@ export const CsvImportExport: React.FC<CsvImportExportProps> = ({
                     return (
                       <tr key={idx} className="hover:bg-slate-50">
                         <td className="p-3 text-slate-400 font-mono">{idx + 1}</td>
-                        <td className="p-3 font-bold text-slate-900">{row.nombre}</td>
+                        <td className="p-3 font-bold text-slate-900">
+                          <div>{row.nombre}</div>
+                          {row.personaEncargada && (
+                            <div className="text-[10px] text-[#FF8407] font-semibold">
+                              Encargado: {row.personaEncargada}
+                            </div>
+                          )}
+                        </td>
                         <td className="p-3 font-mono text-slate-700">{row.telefono}</td>
                         <td className="p-3">
                           <span className="px-2 py-0.5 rounded bg-slate-100 text-slate-700 font-semibold text-[10px]">

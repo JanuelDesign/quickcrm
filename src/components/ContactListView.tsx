@@ -10,6 +10,7 @@ import {
   CheckSquare,
   Square,
   UserCheck,
+  User,
   AlertTriangle,
   ChevronRight,
   Download,
@@ -62,6 +63,7 @@ export const ContactListView: React.FC<ContactListViewProps> = ({
     if (search.trim()) {
       const q = normalizeSearchText(search);
       const matchName = normalizeSearchText(c.nombre).includes(q);
+      const matchPersona = normalizeSearchText(c.personaEncargada).includes(q);
       const matchPhone = normalizeSearchText(c.telefono).includes(q);
       const matchEmail = normalizeSearchText(c.correo).includes(q);
       const matchAddress = normalizeSearchText(c.direccion).includes(q);
@@ -71,7 +73,7 @@ export const ContactListView: React.FC<ContactListViewProps> = ({
         ? c.notas.some((n) => normalizeSearchText(n.texto).includes(q))
         : typeof c.notas === 'string' && normalizeSearchText(c.notas).includes(q);
 
-      if (!matchName && !matchPhone && !matchEmail && !matchAddress && !matchCargo && !matchSeg && !matchNotes) {
+      if (!matchName && !matchPersona && !matchPhone && !matchEmail && !matchAddress && !matchCargo && !matchSeg && !matchNotes) {
         return false;
       }
     }
@@ -461,6 +463,12 @@ export const ContactListView: React.FC<ContactListViewProps> = ({
                             <Sparkles className="w-3.5 h-3.5 text-[#FF8407]" />
                           )}
                         </div>
+                        {c.personaEncargada && (
+                          <div className="text-[11px] text-slate-600 font-medium flex items-center gap-1 mt-0.5" title={`Persona encargada: ${c.personaEncargada}`}>
+                            <User className="w-3 h-3 text-[#FF8407] shrink-0" />
+                            <span>Encargado: <strong className="text-slate-800 font-semibold">{c.personaEncargada}</strong></span>
+                          </div>
+                        )}
                         {c.direccion && (
                           <div className="text-[11px] text-slate-400 font-normal truncate max-w-[200px]">
                             {c.direccion}
@@ -482,7 +490,7 @@ export const ContactListView: React.FC<ContactListViewProps> = ({
                             <Phone className="w-3 h-3" />
                           </a>
                           <a
-                            href={createWhatsAppUrl(c.telefono, c.nombre)}
+                            href={createWhatsAppUrl(c.telefono, c.personaEncargada || c.nombre)}
                             target="_blank"
                             rel="noopener noreferrer"
                             title="WhatsApp"
@@ -611,6 +619,12 @@ export const ContactListView: React.FC<ContactListViewProps> = ({
                   <div className="flex items-start justify-between gap-2">
                     <div>
                       <h4 className="font-bold text-sm text-slate-900">{c.nombre}</h4>
+                      {c.personaEncargada && (
+                        <p className="text-xs text-slate-700 font-medium flex items-center gap-1 mt-0.5">
+                          <User className="w-3 h-3 text-[#FF8407] shrink-0" />
+                          <span>Encargado: <strong className="text-slate-900 font-semibold">{c.personaEncargada}</strong></span>
+                        </p>
+                      )}
                       <p className="text-xs text-slate-500">{c.rolCargo} • {c.direccion || 'Miami'}</p>
                     </div>
                     {c.tipoCliente === 'VIP' ? (
@@ -682,7 +696,7 @@ export const ContactListView: React.FC<ContactListViewProps> = ({
                         <Phone className="w-3.5 h-3.5" />
                       </a>
                       <a
-                        href={createWhatsAppUrl(c.telefono, c.nombre)}
+                        href={createWhatsAppUrl(c.telefono, c.personaEncargada || c.nombre)}
                         target="_blank"
                         rel="noopener noreferrer"
                         className="p-1.5 rounded-lg bg-emerald-100 text-emerald-700"

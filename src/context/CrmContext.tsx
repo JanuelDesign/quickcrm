@@ -139,11 +139,13 @@ export const CrmProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           loaded.push({
             id: docSnap.id,
             nombre,
+            personaEncargada: data.personaEncargada || undefined,
             telefono: data.telefono || '',
             correo: data.correo || '',
             direccion: data.direccion || '',
             tipoCliente: data.tipoCliente || 'Nunca Contactado',
             etapa: data.etapa || 'A1 — Base de Datos',
+            segmento: data.segmento || undefined,
             ultimaCompra: data.ultimaCompra || undefined,
             rolCargo: data.rolCargo || 'Installer',
             vecesQueCompro: data.vecesQueCompro || '1 Compra',

@@ -93,6 +93,18 @@ export function processCsvRows(rows: Record<string, string>[]): ParsedCsvResult 
     const nombre = (row['Nombre'] || row['nombre'] || row['Name'] || '').trim();
     if (!nombre) return; // Omitir filas sin nombre
 
+    // 1b. Persona Encargada (si se especifica persona de contacto directo en la empresa)
+    const personaEncargada = (
+      row['Persona Encargada'] ||
+      row['Persona encargada'] ||
+      row['personaEncargada'] ||
+      row['Nombre de Persona Encargada'] ||
+      row['Encargado'] ||
+      row['Contacto Directo'] ||
+      row['Contact Person'] ||
+      ''
+    ).trim() || undefined;
+
     // 2. Teléfono (ya viene en E.164 ej: +17862663804 sin espacios, insertar tal cual)
     const telefono = (row['Teléfono'] || row['Telefono'] || row['telefono'] || row['Phone'] || '').trim();
 
@@ -177,6 +189,7 @@ export function processCsvRows(rows: Record<string, string>[]): ParsedCsvResult 
 
     contacts.push({
       nombre,
+      personaEncargada,
       telefono,
       correo,
       direccion,

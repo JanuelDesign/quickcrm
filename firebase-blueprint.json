@@ -10,6 +10,11 @@
           "description": "Nombre completo del contacto o empresa",
           "maxLength": 150
         },
+        "personaEncargada": {
+          "type": "string",
+          "description": "Nombre de la persona encargada o contacto directo en la empresa",
+          "maxLength": 150
+        },
         "telefono": {
           "type": "string",
           "description": "Número de teléfono",
