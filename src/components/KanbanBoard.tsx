@@ -42,6 +42,8 @@ import {
   createWhatsAppUrl,
   formatDateSpanish,
   normalizeSearchText,
+  isContactAssignedToUser,
+  isContactUnassigned,
 } from '../utils/formatters';
 
 interface KanbanBoardProps {
@@ -166,9 +168,14 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({
       // Filter by sales rep (admin only)
       if (selectedRep !== 'todos') {
         if (selectedRep === 'sin_asignar') {
-          if (contact.responsable && contact.responsable !== 'sin asignar') return false;
+          if (!isContactUnassigned(contact)) return false;
         } else {
-          if (contact.responsable !== selectedRep) return false;
+          const matchedUser = users.find((u) => u.nombre === selectedRep || u.uid === selectedRep);
+          if (matchedUser) {
+            if (!isContactAssignedToUser(contact, matchedUser, users)) return false;
+          } else if (contact.responsable !== selectedRep) {
+            return false;
+          }
         }
       }
 

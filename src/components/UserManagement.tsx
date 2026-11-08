@@ -19,7 +19,7 @@ import {
 import { useCrm } from '../context/CrmContext';
 import { useAuth } from '../context/AuthContext';
 import { UsuarioCRM, UserRole } from '../types/crm';
-import { formatDateTimeSpanish } from '../utils/formatters';
+import { formatDateTimeSpanish, isContactAssignedToUser } from '../utils/formatters';
 
 export const UserManagement: React.FC = () => {
   const {
@@ -347,7 +347,7 @@ export const UserManagement: React.FC = () => {
         <div className="divide-y divide-slate-100">
           {users.map((u) => {
             const assignedCount = allContacts.filter(
-              (c) => c.responsable === u.nombre || c.responsable === u.email || c.responsable === u.uid
+              (c) => isContactAssignedToUser(c, u, users)
             ).length;
 
             return (

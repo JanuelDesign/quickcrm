@@ -83,6 +83,9 @@ export interface Contacto {
   proximoSeguimiento?: string;
   notas?: string | NotaHistorial[];
   responsable: string; // UID or email or Name or 'sin asignar'
+  responsableId?: string; // UID del vendedor o usuario asignado
+  fechaAsignacion?: string; // ISO string de cuándo se asignó
+  asignadoPor?: string; // Nombre o email de quién asignó el lead
   creadoEn: string;
   actualizadoEn: string;
 }

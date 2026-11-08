@@ -25,9 +25,11 @@ import {
 } from '../types/crm';
 import { REAL_CSV_CONTACTS, OLD_TEST_NAMES } from '../data/realContacts';
 import { useAuth } from './AuthContext';
+import { isContactAssignedToUser, isContactUnassigned } from '../utils/formatters';
 
 interface CrmContextType {
-  contacts: Contacto[]; // filtered for current user role
+  contacts: Contacto[]; // filtered for current user role (assigned + unassigned)
+  myAssignedContacts: Contacto[]; // contacts strictly assigned to current user
   allContacts: Contacto[]; // full list (for admin dashboard / reassignments)
   users: UsuarioCRM[];
   loadingContacts: boolean;
@@ -154,6 +156,9 @@ export const CrmProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             proximoSeguimiento: data.proximoSeguimiento || undefined,
             notas: Array.isArray(data.notas) ? data.notas : (data.notas ? [data.notas] : []),
             responsable: data.responsable || 'sin asignar',
+            responsableId: data.responsableId || undefined,
+            fechaAsignacion: data.fechaAsignacion || undefined,
+            asignadoPor: data.asignadoPor || undefined,
             creadoEn: data.creadoEn || new Date().toISOString(),
             actualizadoEn: data.actualizadoEn || new Date().toISOString(),
           });
@@ -301,33 +306,28 @@ export const CrmProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
   };
 
-  // Filter contacts according to user role:
-  // Vendedor only sees contacts assigned to them OR 'sin asignar' (or empty)
-  // Admin sees all
+  // Mis contactos estrictamente asignados a mí (excluye sin asignar)
+  const myAssignedContacts = React.useMemo(() => {
+    if (!userProfile) return [];
+    return allContacts.filter((c) => isContactAssignedToUser(c, userProfile, users));
+  }, [allContacts, userProfile, users]);
+
+  // Contactos visibles en Kanban y Listado:
+  // Vendedor ve sus contactos asignados + los que están 'sin asignar' para poder tomarlos
+  // Admin ve todos
   const visibleContacts = React.useMemo(() => {
     if (!userProfile) return [];
     if (isAdmin) {
       return allContacts;
     }
 
-    const myUid = (userProfile.uid || '').toLowerCase();
-    const myEmail = (userProfile.email || '').toLowerCase();
-    const myName = (userProfile.nombre || '').toLowerCase();
-
     return allContacts.filter((c) => {
-      const resp = (c.responsable || '').toLowerCase().trim();
-      if (!resp || resp === 'sin asignar' || resp === 'unassigned') {
+      if (isContactUnassigned(c)) {
         return true;
       }
-      return (
-        resp === myUid ||
-        resp === myEmail ||
-        resp === myName ||
-        myName.includes(resp) ||
-        resp.includes(myName)
-      );
+      return isContactAssignedToUser(c, userProfile, users);
     });
-  }, [allContacts, userProfile, isAdmin]);
+  }, [allContacts, userProfile, isAdmin, users]);
 
   // Helper to record automatic background audit logs in contactos/{contactoId}/historialAcciones
   const logAuditAction = async (
@@ -401,6 +401,42 @@ export const CrmProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     const now = new Date().toISOString();
     const target = allContacts.find((c) => c.id === id);
 
+    const cleanStr = (s: string) =>
+      s
+        .replace(/\(vendedor\)/gi, '')
+        .replace(/\(admin\)/gi, '')
+        .replace(/\(administrador\)/gi, '')
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .toLowerCase()
+        .trim();
+
+    let finalUpdates: Partial<Contacto> = { ...updates };
+
+    // Automatic assignment enrichment: when responsable changes, populate responsableId & fechaAsignacion
+    if (updates.responsable !== undefined && updates.responsable !== target?.responsable) {
+      const isUnassigned = isContactUnassigned({ responsable: updates.responsable });
+
+      if (!isUnassigned) {
+        const targetClean = cleanStr(updates.responsable);
+        const matchedUser = users.find(
+          (u) =>
+            u.uid === updates.responsable ||
+            (u.email && u.email.toLowerCase() === updates.responsable?.toLowerCase()) ||
+            cleanStr(u.nombre) === targetClean
+        );
+
+        finalUpdates.responsableId = matchedUser?.uid || updates.responsableId;
+        finalUpdates.fechaAsignacion = updates.fechaAsignacion || now;
+        finalUpdates.asignadoPor =
+          updates.asignadoPor || (userProfile?.nombre || userProfile?.email || 'Admin');
+      } else {
+        finalUpdates.responsableId = undefined;
+        finalUpdates.fechaAsignacion = undefined;
+        finalUpdates.asignadoPor = undefined;
+      }
+    }
+
     // Automatic background auditing: detect what changed
     if (target) {
       // 1. Cambio de etapa (ej: "A1" pasa a "C3")
@@ -443,16 +479,23 @@ export const CrmProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     // Direct Firestore update
     try {
       const docRef = doc(db, 'contactos', id);
-      await updateDoc(docRef, {
-        ...updates,
+      const firestorePayload: Record<string, any> = {
+        ...finalUpdates,
         actualizadoEn: now,
+      };
+      // Clean undefined keys before saving to Firestore
+      Object.keys(firestorePayload).forEach((key) => {
+        if (firestorePayload[key] === undefined) {
+          delete firestorePayload[key];
+        }
       });
+      await updateDoc(docRef, firestorePayload);
     } catch (e) {
       console.warn(`Error actualizando contacto ${id} en Firestore:`, e);
     }
 
     setAllContacts((prev) =>
-      prev.map((c) => (c.id === id ? { ...c, ...updates, actualizadoEn: now } : c))
+      prev.map((c) => (c.id === id ? { ...c, ...finalUpdates, actualizadoEn: now } : c))
     );
   };
 
@@ -485,14 +528,49 @@ export const CrmProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const reassignContacts = async (contactIds: string[], newResponsable: string) => {
     const now = new Date().toISOString();
+    const cleanStr = (s: string) =>
+      s
+        .replace(/\(vendedor\)/gi, '')
+        .replace(/\(admin\)/gi, '')
+        .replace(/\(administrador\)/gi, '')
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .toLowerCase()
+        .trim();
+
+    const isUnassigned = isContactUnassigned({ responsable: newResponsable });
+    const targetClean = cleanStr(newResponsable);
+    const matchedUser = users.find(
+      (u) =>
+        u.uid === newResponsable ||
+        (u.email && u.email.toLowerCase() === newResponsable.toLowerCase()) ||
+        cleanStr(u.nombre) === targetClean
+    );
+
+    const extraFields: Partial<Contacto> = isUnassigned
+      ? {
+          responsableId: undefined,
+          fechaAsignacion: undefined,
+          asignadoPor: undefined,
+        }
+      : {
+          responsableId: matchedUser?.uid || undefined,
+          fechaAsignacion: now,
+          asignadoPor: userProfile?.nombre || userProfile?.email || 'Admin',
+        };
+
     try {
       const batch = writeBatch(db);
       contactIds.forEach((id) => {
         const ref = doc(db, 'contactos', id);
-        batch.update(ref, {
+        const updatePayload: Record<string, any> = {
           responsable: newResponsable,
           actualizadoEn: now,
-        });
+        };
+        if (extraFields.responsableId) updatePayload.responsableId = extraFields.responsableId;
+        if (extraFields.fechaAsignacion) updatePayload.fechaAsignacion = extraFields.fechaAsignacion;
+        if (extraFields.asignadoPor) updatePayload.asignadoPor = extraFields.asignadoPor;
+        batch.update(ref, updatePayload);
       });
       await batch.commit();
     } catch (e) {
@@ -501,15 +579,26 @@ export const CrmProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
     setAllContacts((prev) =>
       prev.map((c) =>
-        contactIds.includes(c.id) ? { ...c, responsable: newResponsable, actualizadoEn: now } : c
+        contactIds.includes(c.id)
+          ? {
+              ...c,
+              responsable: newResponsable,
+              ...extraFields,
+              actualizadoEn: now,
+            }
+          : c
       )
     );
   };
 
   const claimContact = async (id: string) => {
     if (!userProfile) return;
+    const now = new Date().toISOString();
     await updateContact(id, {
       responsable: userProfile.nombre || userProfile.email,
+      responsableId: userProfile.uid,
+      fechaAsignacion: now,
+      asignadoPor: `Auto-asignado por ${userProfile.nombre || userProfile.email}`,
     });
   };
 
@@ -727,6 +816,7 @@ export const CrmProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     <CrmContext.Provider
       value={{
         contacts: visibleContacts,
+        myAssignedContacts,
         allContacts,
         users,
         loadingContacts,

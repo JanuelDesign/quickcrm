@@ -14,10 +14,22 @@ import {
   Calendar,
   AlertTriangle,
   X,
+  Target,
+  MessageCircle,
+  Phone,
+  User,
+  CheckCircle2,
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useCrm } from '../context/CrmContext';
-import { isFollowUpOverdue, isFollowUpToday, formatDateTimeSpanish } from '../utils/formatters';
+import {
+  isFollowUpOverdue,
+  isFollowUpToday,
+  formatDateTimeSpanish,
+  createWhatsAppUrl,
+  formatPhoneNumber,
+  isContactAssignedToUser,
+} from '../utils/formatters';
 import { Contacto } from '../types/crm';
 
 export type ActiveTab = 'kanban' | 'list' | 'dashboard' | 'csv' | 'users';
@@ -36,9 +48,10 @@ export const Navbar: React.FC<NavbarProps> = ({
   onOpenContact,
 }) => {
   const { userProfile, isAdmin, logout } = useAuth();
-  const { contacts } = useCrm();
+  const { contacts, myAssignedContacts, allContacts, users } = useCrm();
 
   const [showOverdueDropdown, setShowOverdueDropdown] = useState(false);
+  const [notificationTab, setNotificationTab] = useState<'assigned' | 'urgent'>('assigned');
 
   // Helper to change tab and ensure scroll resets to top
   const handleSelectTab = (tab: ActiveTab) => {
@@ -48,8 +61,43 @@ export const Navbar: React.FC<NavbarProps> = ({
     document.body.scrollTop = 0;
   };
 
+  // Leads asignados a este usuario pendientes de atención
+  // (nunca contactados, estado pendiente o asignados recientemente en los últimos 7 días)
+  const newlyAssignedLeads = React.useMemo(() => {
+    const pool = isAdmin
+      ? allContacts.filter((c) => isContactAssignedToUser(c, userProfile, users))
+      : myAssignedContacts;
+
+    return pool
+      .filter((c) => {
+        if (c.estadoContacto === 'Ganado' || c.estadoContacto === 'Perdido' || c.etapa?.startsWith('M13')) {
+          return false;
+        }
+        // Sin contactar aún o estado pendiente
+        if (!c.fechaUltimoContacto || c.estadoContacto === 'Pendiente') return true;
+        // O asignado en los últimos 7 días
+        if (c.fechaAsignacion) {
+          const diffMs = Date.now() - new Date(c.fechaAsignacion).getTime();
+          const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+          if (diffDays <= 7) return true;
+        }
+        return false;
+      })
+      .sort((a, b) => {
+        const aNo = !a.fechaUltimoContacto ? 1 : 0;
+        const bNo = !b.fechaUltimoContacto ? 1 : 0;
+        if (aNo !== bNo) return bNo - aNo;
+        const aD = a.fechaAsignacion || a.actualizadoEn || a.creadoEn;
+        const bD = b.fechaAsignacion || b.actualizadoEn || b.creadoEn;
+        return new Date(bD).getTime() - new Date(aD).getTime();
+      });
+  }, [isAdmin, allContacts, myAssignedContacts, userProfile, users]);
+
+  // Cartera relevante para seguimientos programados (para vendedor, su cartera asignada)
+  const followUpTargetContacts = isAdmin ? contacts : myAssignedContacts;
+
   // Overdue and today follow-ups
-  const overdueContacts = contacts.filter(
+  const overdueContacts = followUpTargetContacts.filter(
     (c) =>
       c.proximoSeguimiento &&
       isFollowUpOverdue(c.proximoSeguimiento) &&
@@ -57,14 +105,15 @@ export const Navbar: React.FC<NavbarProps> = ({
       c.estadoContacto !== 'Perdido'
   );
 
-  const todayContacts = contacts.filter(
+  const todayContacts = followUpTargetContacts.filter(
     (c) =>
       c.proximoSeguimiento &&
       isFollowUpToday(c.proximoSeguimiento) &&
       !isFollowUpOverdue(c.proximoSeguimiento)
   );
 
-  const totalUrgentCount = overdueContacts.length + todayContacts.length;
+  const urgentFollowUpsCount = overdueContacts.length + todayContacts.length;
+  const totalUrgentCount = urgentFollowUpsCount + newlyAssignedLeads.length;
 
   return (
     <header className="sticky top-0 z-40 bg-white border-b border-slate-200/90 shadow-xs">
@@ -210,7 +259,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                 )}
               </button>
 
-              {/* Overdue Alerts Modal / Dropdown */}
+              {/* Notifications Alerts Modal / Dropdown */}
               {showOverdueDropdown && (
                 <>
                   {/* Backdrop on mobile */}
@@ -221,15 +270,16 @@ export const Navbar: React.FC<NavbarProps> = ({
 
                   <div
                     id="overdue-list-dropdown"
-                    className="fixed inset-0 sm:inset-auto sm:absolute sm:right-0 sm:mt-2 w-full sm:w-96 h-full sm:h-auto max-h-none sm:max-h-[32rem] bg-white sm:rounded-2xl shadow-2xl sm:shadow-xl sm:border sm:border-slate-200 p-4 sm:p-3 z-50 flex flex-col animate-in fade-in duration-150"
+                    className="fixed inset-0 sm:inset-auto sm:absolute sm:right-0 sm:mt-2 w-full sm:w-[26rem] h-full sm:h-auto max-h-none sm:max-h-[34rem] bg-white sm:rounded-2xl shadow-2xl sm:shadow-xl sm:border sm:border-slate-200 p-4 sm:p-3.5 z-50 flex flex-col animate-in fade-in duration-150"
                   >
+                    {/* Header */}
                     <div className="flex items-center justify-between pb-3 border-b border-slate-100 shrink-0">
                       <div className="flex items-center gap-2 font-bold text-slate-900 text-sm sm:text-base">
-                        <AlertTriangle className="w-5 h-5 sm:w-4 sm:h-4 text-red-500" />
-                        <span>Seguimientos Urgentes</span>
+                        <Bell className="w-5 h-5 sm:w-4 sm:h-4 text-[#FF8407]" />
+                        <span>Centro de Notificaciones</span>
                       </div>
                       <div className="flex items-center gap-2">
-                        <span className="text-xs bg-red-100 text-red-700 font-bold px-2 py-0.5 rounded-full">
+                        <span className="text-xs bg-orange-100 text-[#EA580C] font-bold px-2 py-0.5 rounded-full">
                           {totalUrgentCount} pendientes
                         </span>
                         <button
@@ -243,64 +293,199 @@ export const Navbar: React.FC<NavbarProps> = ({
                       </div>
                     </div>
 
-                    <div className="flex-1 overflow-y-auto divide-y divide-slate-100 py-1">
-                      {totalUrgentCount === 0 ? (
-                        <div className="py-12 sm:py-6 text-center text-sm sm:text-xs text-slate-500">
-                          🎉 ¡Excelente! No tienes seguimientos vencidos por ahora.
-                        </div>
-                      ) : (
-                        <>
-                          {overdueContacts.map((c) => (
-                            <div
-                              key={c.id}
-                              onClick={() => {
-                                onOpenContact(c);
-                                setShowOverdueDropdown(false);
-                              }}
-                              className="p-3 sm:p-2 hover:bg-red-50/50 rounded-xl sm:rounded-lg cursor-pointer transition group"
-                            >
-                              <div className="flex items-center justify-between">
-                                <span className="font-semibold text-sm sm:text-xs text-slate-900 group-hover:text-[#FF8407]">
-                                  {c.nombre}
-                                </span>
-                                <span className="text-[11px] sm:text-[10px] font-bold text-red-600 bg-red-100 px-2 py-0.5 rounded">
-                                  ¡Vencido!
-                                </span>
-                              </div>
-                              <div className="flex items-center justify-between mt-1 text-xs sm:text-[11px] text-slate-500">
-                                <span>{c.rolCargo}</span>
-                                <span className="font-medium text-red-700">
-                                  {formatDateTimeSpanish(c.proximoSeguimiento)}
-                                </span>
-                              </div>
-                            </div>
-                          ))}
+                    {/* Dual Tabs: Leads Asignados vs Seguimientos */}
+                    <div className="grid grid-cols-2 gap-1.5 p-1 bg-slate-100 rounded-xl my-2 shrink-0">
+                      <button
+                        type="button"
+                        onClick={() => setNotificationTab('assigned')}
+                        className={`flex items-center justify-center gap-1.5 py-1.5 px-2 rounded-lg text-xs font-bold transition cursor-pointer ${
+                          notificationTab === 'assigned'
+                            ? 'bg-white text-slate-900 shadow-2xs'
+                            : 'text-slate-600 hover:text-slate-900'
+                        }`}
+                      >
+                        <Target className={`w-3.5 h-3.5 ${notificationTab === 'assigned' ? 'text-[#FF8407]' : 'text-slate-400'}`} />
+                        <span>Leads Asignados</span>
+                        {newlyAssignedLeads.length > 0 && (
+                          <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-orange-500 text-white font-black animate-pulse">
+                            {newlyAssignedLeads.length}
+                          </span>
+                        )}
+                      </button>
 
-                          {todayContacts.map((c) => (
-                            <div
-                              key={c.id}
-                              onClick={() => {
-                                onOpenContact(c);
-                                setShowOverdueDropdown(false);
-                              }}
-                              className="p-3 sm:p-2 hover:bg-amber-50/50 rounded-xl sm:rounded-lg cursor-pointer transition group"
-                            >
-                              <div className="flex items-center justify-between">
-                                <span className="font-semibold text-sm sm:text-xs text-slate-900 group-hover:text-[#FF8407]">
-                                  {c.nombre}
-                                </span>
-                                <span className="text-[11px] sm:text-[10px] font-bold text-amber-700 bg-amber-100 px-2 py-0.5 rounded">
-                                  Hoy
-                                </span>
-                              </div>
-                              <div className="flex items-center justify-between mt-1 text-xs sm:text-[11px] text-slate-500">
-                                <span>{c.rolCargo}</span>
-                                <span className="font-medium text-amber-800">
-                                  {formatDateTimeSpanish(c.proximoSeguimiento)}
-                                </span>
-                              </div>
+                      <button
+                        type="button"
+                        onClick={() => setNotificationTab('urgent')}
+                        className={`flex items-center justify-center gap-1.5 py-1.5 px-2 rounded-lg text-xs font-bold transition cursor-pointer ${
+                          notificationTab === 'urgent'
+                            ? 'bg-white text-slate-900 shadow-2xs'
+                            : 'text-slate-600 hover:text-slate-900'
+                        }`}
+                      >
+                        <AlertTriangle className={`w-3.5 h-3.5 ${notificationTab === 'urgent' ? 'text-red-500' : 'text-slate-400'}`} />
+                        <span>Seguimientos</span>
+                        {urgentFollowUpsCount > 0 && (
+                          <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-red-600 text-white font-black">
+                            {urgentFollowUpsCount}
+                          </span>
+                        )}
+                      </button>
+                    </div>
+
+                    {/* Scrollable list */}
+                    <div className="flex-1 overflow-y-auto divide-y divide-slate-100 py-1">
+                      {/* ================= TAB 1: LEADS ASIGNADOS ================= */}
+                      {notificationTab === 'assigned' && (
+                        <>
+                          {newlyAssignedLeads.length === 0 ? (
+                            <div className="py-12 sm:py-8 text-center text-xs text-slate-500 space-y-1">
+                              <div className="text-2xl mb-1">🎉</div>
+                              <p className="font-semibold text-slate-800">No tienes leads asignados pendientes</p>
+                              <p className="text-[11px] text-slate-400">Todos tus clientes asignados han sido contactados.</p>
                             </div>
-                          ))}
+                          ) : (
+                            newlyAssignedLeads.map((c) => (
+                              <div
+                                key={c.id}
+                                onClick={() => {
+                                  onOpenContact(c);
+                                  setShowOverdueDropdown(false);
+                                }}
+                                className="p-3 hover:bg-orange-50/60 rounded-xl cursor-pointer transition group space-y-1.5"
+                              >
+                                <div className="flex items-center justify-between gap-2">
+                                  <div className="flex items-center gap-1.5 min-w-0">
+                                    <span className="w-2 h-2 rounded-full bg-orange-500 shrink-0 animate-ping" />
+                                    <span className="font-bold text-xs text-slate-900 group-hover:text-[#FF8407] truncate">
+                                      {c.nombre}
+                                    </span>
+                                  </div>
+                                  <span className="text-[10px] font-black text-[#EA580C] bg-orange-100 border border-orange-200 px-2 py-0.5 rounded-md shrink-0">
+                                    {c.etapa ? c.etapa.split('—')[0].trim() : 'Asignado'}
+                                  </span>
+                                </div>
+
+                                {c.personaEncargada && (
+                                  <div className="flex items-center gap-1 text-[11px] text-slate-700 font-medium truncate">
+                                    <User className="w-3 h-3 text-[#FF8407] shrink-0" />
+                                    <span className="truncate">
+                                      Encargado: <strong className="text-slate-900 font-semibold">{c.personaEncargada}</strong>
+                                    </span>
+                                  </div>
+                                )}
+
+                                <div className="flex items-center justify-between text-[11px] text-slate-500 pt-0.5">
+                                  <div className="flex items-center gap-1.5 truncate">
+                                    <span>{c.rolCargo}</span>
+                                    {c.telefono && (
+                                      <>
+                                        <span>•</span>
+                                        <span className="font-semibold text-slate-700">{formatPhoneNumber(c.telefono)}</span>
+                                      </>
+                                    )}
+                                  </div>
+
+                                  {/* Quick Actions */}
+                                  <div
+                                    className="flex items-center gap-1 shrink-0 ml-2"
+                                    onClick={(e) => e.stopPropagation()}
+                                  >
+                                    {c.telefono && (
+                                      <a
+                                        href={`tel:${c.telefono.replace(/\s+/g, '')}`}
+                                        title="Llamar al cliente"
+                                        className="p-1 rounded bg-slate-100 hover:bg-emerald-50 text-slate-600 hover:text-emerald-700 border border-slate-200 transition"
+                                      >
+                                        <Phone className="w-3 h-3" />
+                                      </a>
+                                    )}
+                                    {c.telefono && (
+                                      <a
+                                        href={createWhatsAppUrl(c.telefono, c.personaEncargada || c.nombre)}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        title="Enviar WhatsApp"
+                                        className="p-1 rounded bg-emerald-600 hover:bg-emerald-700 text-white transition"
+                                      >
+                                        <MessageCircle className="w-3 h-3" />
+                                      </a>
+                                    )}
+                                  </div>
+                                </div>
+
+                                {c.asignadoPor && (
+                                  <div className="text-[10px] text-slate-400 font-medium">
+                                    Asignado por: <span className="text-slate-600 font-semibold">{c.asignadoPor}</span>
+                                  </div>
+                                )}
+                              </div>
+                            ))
+                          )}
+                        </>
+                      )}
+
+                      {/* ================= TAB 2: SEGUIMIENTOS URGENTES ================= */}
+                      {notificationTab === 'urgent' && (
+                        <>
+                          {urgentFollowUpsCount === 0 ? (
+                            <div className="py-12 sm:py-8 text-center text-xs text-slate-500">
+                              🎉 ¡Excelente! No tienes llamadas vencidas ni programadas para hoy.
+                            </div>
+                          ) : (
+                            <>
+                              {overdueContacts.map((c) => (
+                                <div
+                                  key={c.id}
+                                  onClick={() => {
+                                    onOpenContact(c);
+                                    setShowOverdueDropdown(false);
+                                  }}
+                                  className="p-3 hover:bg-red-50/50 rounded-xl cursor-pointer transition group"
+                                >
+                                  <div className="flex items-center justify-between">
+                                    <span className="font-semibold text-xs text-slate-900 group-hover:text-[#FF8407]">
+                                      {c.nombre}
+                                    </span>
+                                    <span className="text-[10px] font-bold text-red-600 bg-red-100 px-2 py-0.5 rounded">
+                                      ¡Vencido!
+                                    </span>
+                                  </div>
+                                  <div className="flex items-center justify-between mt-1 text-[11px] text-slate-500">
+                                    <span>{c.rolCargo}</span>
+                                    <span className="font-medium text-red-700">
+                                      {formatDateTimeSpanish(c.proximoSeguimiento)}
+                                    </span>
+                                  </div>
+                                </div>
+                              ))}
+
+                              {todayContacts.map((c) => (
+                                <div
+                                  key={c.id}
+                                  onClick={() => {
+                                    onOpenContact(c);
+                                    setShowOverdueDropdown(false);
+                                  }}
+                                  className="p-3 hover:bg-amber-50/50 rounded-xl cursor-pointer transition group"
+                                >
+                                  <div className="flex items-center justify-between">
+                                    <span className="font-semibold text-xs text-slate-900 group-hover:text-[#FF8407]">
+                                      {c.nombre}
+                                    </span>
+                                    <span className="text-[10px] font-bold text-amber-700 bg-amber-100 px-2 py-0.5 rounded">
+                                      Hoy
+                                    </span>
+                                  </div>
+                                  <div className="flex items-center justify-between mt-1 text-[11px] text-slate-500">
+                                    <span>{c.rolCargo}</span>
+                                    <span className="font-medium text-amber-800">
+                                      {formatDateTimeSpanish(c.proximoSeguimiento)}
+                                    </span>
+                                  </div>
+                                </div>
+                              ))}
+                            </>
+                          )}
                         </>
                       )}
                     </div>

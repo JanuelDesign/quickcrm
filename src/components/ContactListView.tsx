@@ -24,6 +24,8 @@ import {
   isFollowUpToday,
   formatDateSpanish,
   normalizeSearchText,
+  isContactAssignedToUser,
+  isContactUnassigned,
 } from '../utils/formatters';
 import { useCrm } from '../context/CrmContext';
 import { useAuth } from '../context/AuthContext';
@@ -90,10 +92,14 @@ export const ContactListView: React.FC<ContactListViewProps> = ({
 
     if (isAdmin && filterRep !== 'todos') {
       if (filterRep === 'sin_asignar') {
-        const resp = (c.responsable || '').toLowerCase();
-        if (resp && resp !== 'sin asignar' && resp !== 'unassigned') return false;
+        if (!isContactUnassigned(c)) return false;
       } else {
-        if (c.responsable !== filterRep) return false;
+        const matchedUser = users.find((u) => u.nombre === filterRep || u.uid === filterRep);
+        if (matchedUser) {
+          if (!isContactAssignedToUser(c, matchedUser, users)) return false;
+        } else if (c.responsable !== filterRep) {
+          return false;
+        }
       }
     }
 

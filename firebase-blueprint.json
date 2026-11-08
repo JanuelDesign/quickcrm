@@ -77,6 +77,18 @@
           "description": "UID o identificador del vendedor asignado o 'sin asignar'",
           "maxLength": 100
         },
+        "responsableId": {
+          "type": "string",
+          "description": "UID de Firebase Auth del usuario asignado"
+        },
+        "fechaAsignacion": {
+          "type": "string",
+          "description": "Fecha y hora ISO de cuándo se realizó la asignación"
+        },
+        "asignadoPor": {
+          "type": "string",
+          "description": "Nombre o rol de quien asignó el contacto"
+        },
         "creadoEn": {
           "type": "string",
           "description": "Fecha de creación"
