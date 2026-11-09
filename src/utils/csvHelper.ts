@@ -151,12 +151,20 @@ export function processCsvRows(rows: Record<string, string>[]): ParsedCsvResult 
       ? (rawCargo as RolCargo)
       : 'Installer';
 
-    // 9. Veces que Compró: "1 Compra", "<5 Compras", ">5 Compras", o vacío
+    // 9. Veces que Compró: "Nunca ha comprado", "1 Compra", "<5 Compras", ">5 Compras", o vacío
     const rawVeces = (row['Veces que Compró'] || row['vecesQueCompro'] || '').trim();
-    const validVeces: VecesQueCompro[] = ['1 Compra', '<5 Compras', '>5 Compras'];
-    const vecesQueCompro: VecesQueCompro | undefined = validVeces.includes(rawVeces as VecesQueCompro)
+    const validVeces: VecesQueCompro[] = ['Nunca ha comprado', '1 Compra', '<5 Compras', '>5 Compras'];
+    let vecesQueCompro: VecesQueCompro | undefined = validVeces.includes(rawVeces as VecesQueCompro)
       ? (rawVeces as VecesQueCompro)
       : undefined;
+
+    if (!vecesQueCompro) {
+      if (rawVeces.toLowerCase().includes('nunca') || rawVeces === '0') {
+        vecesQueCompro = 'Nunca ha comprado';
+      } else if (tipoCliente === 'Nunca Contactado') {
+        vecesQueCompro = 'Nunca ha comprado';
+      }
+    }
 
     // 10. Estado de Contacto: "Pendiente", "Interesado", o vacío
     const rawEstado = (row['Estado de Contacto'] || row['estadoContacto'] || '').trim();

@@ -115,14 +115,15 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({
 
     return extraStageNames.map((name, idx) => {
       const style = EXTRA_COLORS[idx % EXTRA_COLORS.length];
+      const isRuben = name.toUpperCase().includes('RUBEN');
       return {
         id: `extra_${encodeURIComponent(name)}`,
-        code: name.split(' ')[0] || 'EXTRA',
-        nombre: name,
+        code: isRuben ? 'RUBEN' : (name.split(' ')[0] || 'EXTRA'),
+        nombre: isRuben ? 'Ruben — Clientes Asignados' : name,
         label: name,
-        description: 'Etapa no estándar importada de CSV',
-        color: style.color,
-        bgLight: style.bgLight,
+        description: isRuben ? 'Leads y clientes asignados a Ruben Valverde' : 'Etapa no estándar importada de CSV',
+        color: isRuben ? '#2563EB' : style.color,
+        bgLight: isRuben ? 'bg-blue-50 border-blue-200 text-blue-800' : style.bgLight,
         isExtra: true,
       };
     });
@@ -260,9 +261,9 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({
       (c) =>
         c.estadoContacto !== 'Ganado' &&
         c.estadoContacto !== 'Perdido' &&
-        FUNNEL_STAGES.some((s) => c.etapa === s.label || c.etapa?.startsWith(s.code))
+        funnelColumns.some((s) => c.etapa === s.label || (s.code && c.etapa?.startsWith(s.code)))
     ).length;
-  }, [contacts]);
+  }, [contacts, funnelColumns]);
 
   const segmentedCount = useMemo(() => {
     return contacts.filter(

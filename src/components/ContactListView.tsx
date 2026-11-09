@@ -15,6 +15,11 @@ import {
   ChevronRight,
   Download,
   Plus,
+  Calendar,
+  CalendarDays,
+  PhoneCall,
+  Check,
+  X,
 } from 'lucide-react';
 import { Contacto, PIPELINE_STAGES, FUNNEL_STAGES, CLIENT_SEGMENTS, EXIT_STAGES, TIPOS_CLIENTE, ROLES_CARGO } from '../types/crm';
 import {
@@ -41,7 +46,7 @@ export const ContactListView: React.FC<ContactListViewProps> = ({
   onOpenContact,
   onNewContact,
 }) => {
-  const { contacts, users, reassignContacts } = useCrm();
+  const { contacts, users, reassignContacts, bulkUpdateFollowUpDate } = useCrm();
   const { isAdmin } = useAuth();
 
   const [search, setSearch] = useState('');
@@ -56,9 +61,12 @@ export const ContactListView: React.FC<ContactListViewProps> = ({
   const [sortField, setSortField] = useState<SortField>('nombre');
   const [sortAsc, setSortAsc] = useState(true);
 
-  // Bulk Selection (Admin)
+  // Bulk Selection & Editing
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [bulkReassignTarget, setBulkReassignTarget] = useState('');
+  const [bulkCallDate, setBulkCallDate] = useState('');
+  const [bulkSuccessMsg, setBulkSuccessMsg] = useState<string | null>(null);
+  const [isProcessingBulk, setIsProcessingBulk] = useState(false);
 
   // Filtered List
   const filtered = contacts.filter((c) => {
@@ -157,11 +165,46 @@ export const ContactListView: React.FC<ContactListViewProps> = ({
     }
   };
 
+  const setQuickDate = (daysFromNow: number) => {
+    const d = new Date();
+    d.setDate(d.getDate() + daysFromNow);
+    const yyyy = d.getFullYear();
+    const mm = String(d.getMonth() + 1).padStart(2, '0');
+    const dd = String(d.getDate()).padStart(2, '0');
+    setBulkCallDate(`${yyyy}-${mm}-${dd}`);
+  };
+
+  const handleBulkSetCallDate = async (directDate?: string) => {
+    const dateToApply = directDate || bulkCallDate;
+    if (!dateToApply || selectedIds.length === 0) return;
+    setIsProcessingBulk(true);
+    try {
+      const formattedIso = dateToApply.includes('T') ? dateToApply : `${dateToApply}T10:00:00`;
+      await bulkUpdateFollowUpDate(selectedIds, formattedIso);
+      const count = selectedIds.length;
+      setSelectedIds([]);
+      setBulkCallDate('');
+      setBulkSuccessMsg(`Se programó la fecha de llamada para ${count} contactos para el ${formatDateSpanish(formattedIso)}.`);
+      setTimeout(() => setBulkSuccessMsg(null), 5000);
+    } finally {
+      setIsProcessingBulk(false);
+    }
+  };
+
   const handleBulkReassign = async () => {
     if (!bulkReassignTarget || selectedIds.length === 0) return;
-    await reassignContacts(selectedIds, bulkReassignTarget);
-    setSelectedIds([]);
-    alert(`Se han reasignado ${selectedIds.length} contactos a ${bulkReassignTarget}`);
+    setIsProcessingBulk(true);
+    try {
+      const count = selectedIds.length;
+      const targetName = bulkReassignTarget;
+      await reassignContacts(selectedIds, bulkReassignTarget);
+      setSelectedIds([]);
+      setBulkReassignTarget('');
+      setBulkSuccessMsg(`Se reasignaron ${count} contactos a ${targetName}.`);
+      setTimeout(() => setBulkSuccessMsg(null), 5000);
+    } finally {
+      setIsProcessingBulk(false);
+    }
   };
 
   return (
@@ -321,45 +364,169 @@ export const ContactListView: React.FC<ContactListViewProps> = ({
         </div>
       </div>
 
-      {/* Admin Bulk Actions Bar */}
-      {isAdmin && selectedIds.length > 0 && (
-        <div className="bg-orange-50 border border-[#FF8407]/40 rounded-xl p-3 flex flex-wrap items-center justify-between gap-3 animate-in fade-in">
-          <div className="flex items-center gap-2">
-            <span className="text-xs font-extrabold text-[#FF8407] bg-white px-2 py-0.5 rounded-md border border-orange-200">
-              {selectedIds.length} seleccionados
-            </span>
-            <span className="text-xs text-slate-700 font-medium">Acción en bloque:</span>
+      {/* Toast de éxito tras acción masiva */}
+      {bulkSuccessMsg && (
+        <div className="bg-emerald-50 border border-emerald-300 text-emerald-900 rounded-xl p-3 flex items-center justify-between gap-2 shadow-xs animate-in fade-in slide-in-from-top-2">
+          <div className="flex items-center gap-2 text-xs font-bold">
+            <Check className="w-4 h-4 text-emerald-600 shrink-0" />
+            <span>{bulkSuccessMsg}</span>
+          </div>
+          <button
+            onClick={() => setBulkSuccessMsg(null)}
+            className="text-emerald-700 hover:text-emerald-900 text-xs p-1"
+          >
+            <X className="w-3.5 h-3.5" />
+          </button>
+        </div>
+      )}
+
+      {/* Barra de Edición Masiva (Disponible al seleccionar contactos) */}
+      {selectedIds.length > 0 && (
+        <div className="bg-orange-50/90 border border-[#FF8407]/40 rounded-2xl p-3.5 shadow-sm space-y-3 animate-in fade-in">
+          {/* Fila superior: Contador y botones de selección rápida */}
+          <div className="flex flex-wrap items-center justify-between gap-2 border-b border-orange-200/60 pb-2.5">
+            <div className="flex items-center gap-2">
+              <span className="text-xs font-black text-[#FF8407] bg-white px-2.5 py-1 rounded-lg border border-orange-200 shadow-2xs">
+                {selectedIds.length} seleccionados
+              </span>
+              <span className="text-xs text-slate-700 font-semibold">
+                Edición masiva de contactos
+              </span>
+            </div>
+
+            <div className="flex items-center gap-2 text-xs">
+              {selectedIds.length < sorted.length && (
+                <button
+                  type="button"
+                  onClick={handleSelectAll}
+                  className="text-[#FF8407] hover:underline font-bold"
+                >
+                  Seleccionar todos ({sorted.length})
+                </button>
+              )}
+              <span className="text-slate-300">•</span>
+              <button
+                type="button"
+                onClick={() => setSelectedIds([])}
+                className="text-slate-500 hover:text-slate-700 underline font-medium"
+              >
+                Desmarcar todos
+              </button>
+            </div>
           </div>
 
-          <div className="flex items-center gap-2">
-            <select
-              value={bulkReassignTarget}
-              onChange={(e) => setBulkReassignTarget(e.target.value)}
-              className="px-3 py-1.5 bg-white border border-slate-200 rounded-lg text-xs font-semibold text-slate-800"
-            >
-              <option value="">Seleccionar nuevo responsable...</option>
-              <option value="sin asignar">⚠️ Dejar sin asignar</option>
-              {users.map((u) => (
-                <option key={u.uid} value={u.nombre}>
-                  {u.nombre}
-                </option>
-              ))}
-            </select>
+          {/* Opciones de edición masiva */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 pt-0.5">
+            {/* 1. AGENDAR FECHA PARA LLAMAR (Edición masiva de próximo seguimiento) */}
+            <div className="bg-white p-3 rounded-xl border border-orange-200/80 shadow-2xs space-y-2">
+              <div className="flex items-center justify-between">
+                <label className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
+                  <PhoneCall className="w-3.5 h-3.5 text-[#FF8407]" />
+                  <span>Fecha para Llamar (Próximo Seguimiento)</span>
+                </label>
+                <span className="text-[10px] text-slate-400 font-medium">Asigna en lote</span>
+              </div>
 
-            <button
-              onClick={handleBulkReassign}
-              disabled={!bulkReassignTarget}
-              className="px-3.5 py-1.5 bg-[#FF8407] hover:bg-[#E57300] disabled:opacity-50 text-white font-bold text-xs rounded-lg shadow-2xs transition"
-            >
-              Reasignar
-            </button>
+              {/* Botones rápidos */}
+              <div className="flex flex-wrap items-center gap-1.5">
+                <button
+                  type="button"
+                  onClick={() => setQuickDate(0)}
+                  className="px-2 py-1 rounded-md text-[11px] font-bold bg-slate-100 hover:bg-orange-100 hover:text-[#EA580C] text-slate-700 transition"
+                >
+                  Hoy
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setQuickDate(1)}
+                  className="px-2 py-1 rounded-md text-[11px] font-bold bg-slate-100 hover:bg-orange-100 hover:text-[#EA580C] text-slate-700 transition"
+                >
+                  Mañana
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setQuickDate(2)}
+                  className="px-2 py-1 rounded-md text-[11px] font-bold bg-slate-100 hover:bg-orange-100 hover:text-[#EA580C] text-slate-700 transition"
+                >
+                  +2 Días
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setQuickDate(7)}
+                  className="px-2 py-1 rounded-md text-[11px] font-bold bg-slate-100 hover:bg-orange-100 hover:text-[#EA580C] text-slate-700 transition"
+                >
+                  +1 Sem
+                </button>
+              </div>
 
-            <button
-              onClick={() => setSelectedIds([])}
-              className="text-xs text-slate-500 hover:text-slate-700 underline px-1"
-            >
-              Desmarcar
-            </button>
+              {/* Input date y botón aplicar */}
+              <div className="flex items-center gap-2">
+                <input
+                  type="date"
+                  value={bulkCallDate}
+                  onChange={(e) => setBulkCallDate(e.target.value)}
+                  className="flex-1 px-2.5 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-xs font-semibold text-slate-800 focus:outline-none focus:border-[#FF8407]"
+                />
+                <button
+                  type="button"
+                  onClick={() => handleBulkSetCallDate()}
+                  disabled={!bulkCallDate || isProcessingBulk}
+                  className="flex items-center gap-1.5 px-3.5 py-1.5 bg-[#FF8407] hover:bg-[#E57300] disabled:opacity-50 text-white font-bold text-xs rounded-lg shadow-2xs transition active:scale-98"
+                >
+                  <Calendar className="w-3.5 h-3.5" />
+                  <span>{isProcessingBulk ? 'Guardando...' : 'Fijar Fecha'}</span>
+                </button>
+              </div>
+            </div>
+
+            {/* 2. REASIGNAR VENDEDOR RESPONSABLE (Solo Admin) */}
+            {isAdmin ? (
+              <div className="bg-white p-3 rounded-xl border border-orange-200/80 shadow-2xs space-y-2">
+                <div className="flex items-center justify-between">
+                  <label className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
+                    <UserCheck className="w-3.5 h-3.5 text-blue-600" />
+                    <span>Reasignar Responsable</span>
+                  </label>
+                  <span className="text-[10px] text-blue-600 font-semibold bg-blue-50 px-1.5 py-0.5 rounded">
+                    Admin
+                  </span>
+                </div>
+
+                <p className="text-[11px] text-slate-500">
+                  Transfiere los {selectedIds.length} contactos a otro vendedor del equipo.
+                </p>
+
+                <div className="flex items-center gap-2">
+                  <select
+                    value={bulkReassignTarget}
+                    onChange={(e) => setBulkReassignTarget(e.target.value)}
+                    className="flex-1 px-2.5 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-xs font-semibold text-slate-800 focus:outline-none focus:border-[#FF8407]"
+                  >
+                    <option value="">Seleccionar vendedor...</option>
+                    <option value="sin asignar">⚠️ Dejar sin asignar</option>
+                    {users.map((u) => (
+                      <option key={u.uid} value={u.nombre}>
+                        {u.nombre}
+                      </option>
+                    ))}
+                  </select>
+
+                  <button
+                    type="button"
+                    onClick={handleBulkReassign}
+                    disabled={!bulkReassignTarget || isProcessingBulk}
+                    className="flex items-center gap-1.5 px-3.5 py-1.5 bg-slate-900 hover:bg-slate-800 disabled:opacity-50 text-white font-bold text-xs rounded-lg shadow-2xs transition active:scale-98"
+                  >
+                    <UserCheck className="w-3.5 h-3.5" />
+                    <span>{isProcessingBulk ? 'Reasignando...' : 'Reasignar'}</span>
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <div className="bg-slate-50/80 p-3 rounded-xl border border-slate-200/80 flex items-center text-xs text-slate-500">
+                <span>Puedes agendar llamadas para tus contactos seleccionados. La reasignación de vendedores es gestionada por el Administrador.</span>
+              </div>
+            )}
           </div>
         </div>
       )}
@@ -371,17 +538,15 @@ export const ContactListView: React.FC<ContactListViewProps> = ({
           <table className="w-full text-left border-collapse">
             <thead>
               <tr className="bg-slate-50/80 border-b border-slate-200 text-[11px] font-bold text-slate-500 uppercase tracking-wider">
-                {isAdmin && (
-                  <th className="p-3.5 w-10 text-center">
-                    <button onClick={handleSelectAll} className="text-slate-400 hover:text-slate-600">
-                      {selectedIds.length === sorted.length && sorted.length > 0 ? (
-                        <CheckSquare className="w-4 h-4 text-[#FF8407]" />
-                      ) : (
-                        <Square className="w-4 h-4" />
-                      )}
-                    </button>
-                  </th>
-                )}
+                <th className="p-3.5 w-10 text-center">
+                  <button onClick={handleSelectAll} className="text-slate-400 hover:text-slate-600" title={selectedIds.length === sorted.length && sorted.length > 0 ? "Desmarcar todos" : "Seleccionar todos"}>
+                    {selectedIds.length === sorted.length && sorted.length > 0 ? (
+                      <CheckSquare className="w-4 h-4 text-[#FF8407]" />
+                    ) : (
+                      <Square className="w-4 h-4" />
+                    )}
+                  </button>
+                </th>
                 <th
                   onClick={() => toggleSort('nombre')}
                   className="p-3.5 cursor-pointer hover:text-slate-900"
@@ -427,7 +592,7 @@ export const ContactListView: React.FC<ContactListViewProps> = ({
             <tbody className="divide-y divide-slate-100 text-xs">
               {sorted.length === 0 ? (
                 <tr>
-                  <td colSpan={isAdmin ? 9 : 8} className="p-8 text-center text-slate-400">
+                  <td colSpan={9} className="p-8 text-center text-slate-400">
                     No se encontraron contactos con los filtros seleccionados.
                   </td>
                 </tr>
@@ -445,21 +610,19 @@ export const ContactListView: React.FC<ContactListViewProps> = ({
                         isSelected ? 'bg-orange-50/50' : ''
                       }`}
                     >
-                      {isAdmin && (
-                        <td
-                          className="p-3.5 text-center"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleToggleSelect(c.id);
-                          }}
-                        >
-                          {isSelected ? (
-                            <CheckSquare className="w-4 h-4 text-[#FF8407]" />
-                          ) : (
-                            <Square className="w-4 h-4 text-slate-300 hover:text-slate-500" />
-                          )}
-                        </td>
-                      )}
+                      <td
+                        className="p-3.5 text-center"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleToggleSelect(c.id);
+                        }}
+                      >
+                        {isSelected ? (
+                          <CheckSquare className="w-4 h-4 text-[#FF8407]" />
+                        ) : (
+                          <Square className="w-4 h-4 text-slate-300 hover:text-slate-500" />
+                        )}
+                      </td>
 
                       {/* Nombre */}
                       <td className="p-3.5 font-bold text-slate-900 group">
@@ -541,17 +704,24 @@ export const ContactListView: React.FC<ContactListViewProps> = ({
 
                       {/* Tipo Cliente */}
                       <td className="p-3.5">
-                        {c.tipoCliente === 'VIP' ? (
-                          <span className="text-[11px] font-extrabold px-2 py-0.5 rounded bg-amber-100 text-amber-900 border border-amber-300">
-                            VIP
-                          </span>
-                        ) : c.tipoCliente === 'Compró Antes' ? (
-                          <span className="text-[11px] font-bold px-2 py-0.5 rounded bg-blue-50 text-blue-700">
-                            Compró Antes
-                          </span>
-                        ) : (
-                          <span className="text-[11px] text-slate-600">{c.tipoCliente}</span>
-                        )}
+                        <div className="flex flex-col gap-0.5">
+                          {c.tipoCliente === 'VIP' ? (
+                            <span className="text-[11px] font-extrabold px-2 py-0.5 rounded bg-amber-100 text-amber-900 border border-amber-300 w-fit">
+                              VIP
+                            </span>
+                          ) : c.tipoCliente === 'Compró Antes' ? (
+                            <span className="text-[11px] font-bold px-2 py-0.5 rounded bg-blue-50 text-blue-700 w-fit">
+                              Compró Antes
+                            </span>
+                          ) : (
+                            <span className="text-[11px] text-slate-600">{c.tipoCliente}</span>
+                          )}
+                          {c.vecesQueCompro && (
+                            <span className="text-[10px] text-slate-400 font-medium">
+                              {c.vecesQueCompro}
+                            </span>
+                          )}
+                        </div>
                       </td>
 
                       {/* Rol / Cargo */}
@@ -616,32 +786,59 @@ export const ContactListView: React.FC<ContactListViewProps> = ({
           ) : (
             sorted.map((c) => {
               const isOverdue = isFollowUpOverdue(c.proximoSeguimiento);
+              const isSelected = selectedIds.includes(c.id);
               return (
                 <div
                   key={c.id}
                   onClick={() => onOpenContact(c)}
-                  className="p-4 hover:bg-slate-50 active:bg-orange-50/50 transition cursor-pointer space-y-2"
+                  className={`p-4 hover:bg-slate-50 active:bg-orange-50/50 transition cursor-pointer space-y-2 ${
+                    isSelected ? 'bg-orange-50/60' : ''
+                  }`}
                 >
                   <div className="flex items-start justify-between gap-2">
-                    <div>
-                      <h4 className="font-bold text-sm text-slate-900">{c.nombre}</h4>
-                      {c.personaEncargada && (
-                        <p className="text-xs text-slate-700 font-medium flex items-center gap-1 mt-0.5">
-                          <User className="w-3 h-3 text-[#FF8407] shrink-0" />
-                          <span>Encargado: <strong className="text-slate-900 font-semibold">{c.personaEncargada}</strong></span>
-                        </p>
-                      )}
-                      <p className="text-xs text-slate-500">{c.rolCargo} • {c.direccion || 'Miami'}</p>
+                    <div className="flex items-start gap-2.5 min-w-0">
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleToggleSelect(c.id);
+                        }}
+                        className="mt-0.5 p-1 -ml-1 text-slate-400 hover:text-slate-600 shrink-0"
+                        title={isSelected ? 'Desmarcar' : 'Seleccionar'}
+                      >
+                        {isSelected ? (
+                          <CheckSquare className="w-4 h-4 text-[#FF8407]" />
+                        ) : (
+                          <Square className="w-4 h-4 text-slate-300" />
+                        )}
+                      </button>
+                      <div className="min-w-0">
+                        <h4 className="font-bold text-sm text-slate-900 truncate">{c.nombre}</h4>
+                        {c.personaEncargada && (
+                          <p className="text-xs text-slate-700 font-medium flex items-center gap-1 mt-0.5 truncate">
+                            <User className="w-3 h-3 text-[#FF8407] shrink-0" />
+                            <span className="truncate">Encargado: <strong className="text-slate-900 font-semibold">{c.personaEncargada}</strong></span>
+                          </p>
+                        )}
+                        <p className="text-xs text-slate-500 truncate">{c.rolCargo} • {c.direccion || 'Miami'}</p>
+                      </div>
                     </div>
-                    {c.tipoCliente === 'VIP' ? (
-                      <span className="text-[10px] font-extrabold px-1.5 py-0.5 rounded bg-amber-100 text-amber-800">
-                        VIP
-                      </span>
-                    ) : (
-                      <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded bg-slate-100 text-slate-600">
-                        {c.tipoCliente}
-                      </span>
-                    )}
+                    <div className="flex flex-col items-end gap-0.5 shrink-0">
+                      {c.tipoCliente === 'VIP' ? (
+                        <span className="text-[10px] font-extrabold px-1.5 py-0.5 rounded bg-amber-100 text-amber-800">
+                          VIP
+                        </span>
+                      ) : (
+                        <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded bg-slate-100 text-slate-600">
+                          {c.tipoCliente}
+                        </span>
+                      )}
+                      {c.vecesQueCompro && (
+                        <span className="text-[9px] text-slate-400 font-medium">
+                          {c.vecesQueCompro}
+                        </span>
+                      )}
+                    </div>
                   </div>
 
                   <div className="flex flex-wrap items-center justify-between gap-1 text-xs pt-1">

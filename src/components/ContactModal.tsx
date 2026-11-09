@@ -100,7 +100,7 @@ export const ContactModal: React.FC<ContactModalProps> = ({
   const [etapa, setEtapa] = useState<string>(FUNNEL_STAGES[0].label);
   const [segmento, setSegmento] = useState<string>('');
   const [rolCargo, setRolCargo] = useState<RolCargo>('Installer');
-  const [vecesQueCompro, setVecesQueCompro] = useState<VecesQueCompro>('1 Compra');
+  const [vecesQueCompro, setVecesQueCompro] = useState<VecesQueCompro>('Nunca ha comprado');
   const [estadoContacto, setEstadoContacto] = useState<EstadoContacto>('Pendiente');
   const [ultimaCompra, setUltimaCompra] = useState('');
   const [proximoSeguimiento, setProximoSeguimiento] = useState('');
@@ -218,7 +218,8 @@ export const ContactModal: React.FC<ContactModalProps> = ({
         '';
       setSegmento(existingSeg);
       setRolCargo(contact.rolCargo || 'Installer');
-      setVecesQueCompro(contact.vecesQueCompro || '1 Compra');
+      const defaultVeces: VecesQueCompro = contact.tipoCliente === 'Nunca Contactado' ? 'Nunca ha comprado' : '1 Compra';
+      setVecesQueCompro(contact.vecesQueCompro || defaultVeces);
       setEstadoContacto(contact.estadoContacto || 'Pendiente');
       setUltimaCompra(contact.ultimaCompra ? contact.ultimaCompra.slice(0, 10) : '');
       setProximoSeguimiento(
@@ -237,7 +238,7 @@ export const ContactModal: React.FC<ContactModalProps> = ({
       setEtapa(FUNNEL_STAGES[0].label);
       setSegmento('');
       setRolCargo('Installer');
-      setVecesQueCompro('1 Compra');
+      setVecesQueCompro('Nunca ha comprado');
       setEstadoContacto('Pendiente');
       setUltimaCompra('');
       const tomorrow = new Date(Date.now() + 86400000);
@@ -275,6 +276,12 @@ export const ContactModal: React.FC<ContactModalProps> = ({
   // Helper for applying Ganado resolution with smart pre-suggestion
   const handleMarkGanado = () => {
     setEstadoContacto('Ganado');
+    if (vecesQueCompro === 'Nunca ha comprado') {
+      setVecesQueCompro('1 Compra');
+    }
+    if (tipoCliente === 'Nunca Contactado' || tipoCliente === 'Contactado sin Compra') {
+      setTipoCliente('Compró Antes');
+    }
     if (!segmento) {
       if (rolCargo === 'Home Owner') {
         const segN14 = CLIENT_SEGMENTS.find((s) => s.code === 'N14');
@@ -818,7 +825,15 @@ export const ContactModal: React.FC<ContactModalProps> = ({
                       </label>
                       <select
                         value={tipoCliente}
-                        onChange={(e) => setTipoCliente(e.target.value as TipoCliente)}
+                        onChange={(e) => {
+                          const val = e.target.value as TipoCliente;
+                          setTipoCliente(val);
+                          if (val === 'Nunca Contactado') {
+                            setVecesQueCompro('Nunca ha comprado');
+                          } else if (vecesQueCompro === 'Nunca ha comprado') {
+                            setVecesQueCompro(val === 'VIP' ? '<5 Compras' : '1 Compra');
+                          }
+                        }}
                         className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs font-semibold text-slate-800 focus:outline-none focus:border-[#FF8407]"
                       >
                         {TIPOS_CLIENTE.map((t) => (
@@ -874,7 +889,15 @@ export const ContactModal: React.FC<ContactModalProps> = ({
                       </label>
                       <select
                         value={vecesQueCompro}
-                        onChange={(e) => setVecesQueCompro(e.target.value as VecesQueCompro)}
+                        onChange={(e) => {
+                          const val = e.target.value as VecesQueCompro;
+                          setVecesQueCompro(val);
+                          if (val === 'Nunca ha comprado' && tipoCliente === 'Compró Antes') {
+                            setTipoCliente('Nunca Contactado');
+                          } else if (val !== 'Nunca ha comprado' && tipoCliente === 'Nunca Contactado') {
+                            setTipoCliente(val === '>5 Compras' || val === '<5 Compras' ? 'VIP' : 'Compró Antes');
+                          }
+                        }}
                         className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs font-semibold text-slate-800 focus:outline-none focus:border-[#FF8407]"
                       >
                         {VECES_COMPRO.map((vc) => (

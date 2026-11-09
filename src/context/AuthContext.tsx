@@ -37,6 +37,16 @@ const ADMIN_EMAILS = [
   'esteban@quicksurfaces.com',
 ];
 
+const resolveDefaultName = (email?: string | null, displayName?: string | null): string => {
+  if (displayName && displayName.trim()) return displayName.trim();
+  const e = (email || '').toLowerCase();
+  if (e.includes('rubenvalverde') || e.includes('ruben.valverde')) return 'Ruben Valverde';
+  if (e.includes('janueldesign')) return 'Januel (Admin)';
+  if (e.includes('esteban.gavotti')) return 'Esteban Gavotti (Admin)';
+  if (e.includes('jaimebaruh')) return 'Jaime Baruh';
+  return e.split('@')[0] || 'Usuario Quicksurfaces';
+};
+
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [userProfile, setUserProfile] = useState<UsuarioCRM | null>(null);
@@ -67,7 +77,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
               setUserProfile({
                 uid: user.uid,
                 email: user.email || '',
-                nombre: data.nombre || user.displayName || user.email?.split('@')[0] || 'Usuario',
+                nombre: (data.nombre && data.nombre !== user.email?.split('@')[0])
+                  ? data.nombre
+                  : resolveDefaultName(user.email, user.displayName),
                 rol: (data.rol as UserRole) || (shouldBeAdmin ? 'admin' : 'vendedor'),
                 activo: data.activo !== false,
                 creadoEn: data.creadoEn || new Date().toISOString(),
@@ -78,7 +90,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
               const newProfile: UsuarioCRM = {
                 uid: user.uid,
                 email: user.email || '',
-                nombre: user.displayName || user.email?.split('@')[0] || 'Usuario Quicksurfaces',
+                nombre: resolveDefaultName(user.email, user.displayName),
                 rol: shouldBeAdmin ? 'admin' : 'vendedor',
                 activo: true,
                 creadoEn: new Date().toISOString(),
@@ -93,7 +105,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           setUserProfile({
             uid: user.uid,
             email: user.email || '',
-            nombre: user.displayName || user.email?.split('@')[0] || 'Usuario',
+            nombre: resolveDefaultName(user.email, user.displayName),
             rol: ADMIN_EMAILS.includes(emailLower) ? 'admin' : 'vendedor',
             activo: true,
             creadoEn: new Date().toISOString(),

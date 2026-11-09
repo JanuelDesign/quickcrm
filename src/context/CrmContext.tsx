@@ -22,6 +22,7 @@ import {
   RegistroEliminacion,
   TipoAccionAuditoria,
   UserRole,
+  VecesQueCompro,
 } from '../types/crm';
 import { REAL_CSV_CONTACTS, OLD_TEST_NAMES } from '../data/realContacts';
 import { useAuth } from './AuthContext';
@@ -40,6 +41,7 @@ interface CrmContextType {
   updateContactStage: (id: string, newStage: string) => Promise<void>;
   deleteContact: (id: string) => Promise<void>;
   reassignContacts: (contactIds: string[], newResponsable: string) => Promise<void>;
+  bulkUpdateFollowUpDate: (contactIds: string[], dateString: string) => Promise<void>;
   claimContact: (id: string) => Promise<void>;
   addNote: (id: string, text: string, adjuntos?: AdjuntoNota[]) => Promise<void>;
   markContactedToday: (id: string) => Promise<void>;
@@ -118,8 +120,8 @@ export const CrmProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           return;
         }
 
-        const loaded: Contacto[] = [];
         const toDeleteOldDocs: string[] = [];
+        const seenMap = new Map<string, Contacto>();
 
         snapshot.docs.forEach((docSnap) => {
           const data = docSnap.data();
@@ -138,7 +140,7 @@ export const CrmProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             return;
           }
 
-          loaded.push({
+          const currentContact: Contacto = {
             id: docSnap.id,
             nombre,
             personaEncargada: data.personaEncargada || undefined,
@@ -150,7 +152,7 @@ export const CrmProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             segmento: data.segmento || undefined,
             ultimaCompra: data.ultimaCompra || undefined,
             rolCargo: data.rolCargo || 'Installer',
-            vecesQueCompro: data.vecesQueCompro || '1 Compra',
+            vecesQueCompro: (data.vecesQueCompro as VecesQueCompro) || (data.tipoCliente === 'Nunca Contactado' ? 'Nunca ha comprado' : '1 Compra'),
             estadoContacto: data.estadoContacto || 'Pendiente',
             fechaUltimoContacto: data.fechaUltimoContacto || undefined,
             proximoSeguimiento: data.proximoSeguimiento || undefined,
@@ -161,10 +163,31 @@ export const CrmProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             asignadoPor: data.asignadoPor || undefined,
             creadoEn: data.creadoEn || new Date().toISOString(),
             actualizadoEn: data.actualizadoEn || new Date().toISOString(),
-          });
+          };
+
+          // Clave única para evitar duplicados por teléfono o nombre
+          const cleanPhone = (currentContact.telefono || '').replace(/\D/g, '');
+          const cleanName = (currentContact.nombre || '').trim().toLowerCase();
+          const uniqueKey = cleanPhone.length >= 7 ? `tel:${cleanPhone}` : `name:${cleanName}`;
+
+          if (seenMap.has(uniqueKey)) {
+            const existing = seenMap.get(uniqueKey)!;
+            const currentHasResp = currentContact.responsable && currentContact.responsable !== 'sin asignar';
+            const existingHasResp = existing.responsable && existing.responsable !== 'sin asignar';
+            if (currentHasResp && !existingHasResp) {
+              toDeleteOldDocs.push(existing.id);
+              seenMap.set(uniqueKey, currentContact);
+            } else {
+              toDeleteOldDocs.push(currentContact.id);
+            }
+          } else {
+            seenMap.set(uniqueKey, currentContact);
+          }
         });
 
-        // Si se detectaron datos viejos de prueba en Firestore, eliminarlos
+        const deduplicatedList = Array.from(seenMap.values());
+
+        // Si se detectaron datos viejos de prueba o duplicados en Firestore, eliminarlos
         if (toDeleteOldDocs.length > 0) {
           try {
             const batch = writeBatch(db);
@@ -172,14 +195,14 @@ export const CrmProvider: React.FC<{ children: React.ReactNode }> = ({ children 
               batch.delete(doc(db, 'contactos', id));
             });
             await batch.commit();
-            console.log(`Eliminados ${toDeleteOldDocs.length} datos de prueba antiguos de Firestore.`);
+            console.log(`Eliminados ${toDeleteOldDocs.length} datos de prueba o duplicados de Firestore.`);
           } catch (delErr) {
-            console.warn('No se pudieron eliminar datos de prueba antiguos:', delErr);
+            console.warn('No se pudieron eliminar datos antiguos o duplicados:', delErr);
           }
         }
 
-        if (loaded.length > 0) {
-          setAllContacts(loaded);
+        if (deduplicatedList.length > 0) {
+          setAllContacts(deduplicatedList);
         } else {
           // Si quedaron vacíos por eliminar pruebas, sembrar los 193 reales
           await seedInitialData();
@@ -296,6 +319,11 @@ export const CrmProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const syncRealContactsToFirestore = async (): Promise<number> => {
+    // Si Firestore ya contiene la base de contactos (>= 190), no reimportar para prevenir duplicaciones
+    if (allContacts.length >= 190) {
+      console.log(`Firestore ya contiene ${allContacts.length} contactos. Omitiendo importación redundante.`);
+      return allContacts.length;
+    }
     setIsSyncing(true);
     try {
       const count = await batchImportContacts(REAL_CSV_CONTACTS);
@@ -591,6 +619,41 @@ export const CrmProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     );
   };
 
+  const bulkUpdateFollowUpDate = async (contactIds: string[], dateString: string) => {
+    if (!contactIds || contactIds.length === 0) return;
+    const now = new Date().toISOString();
+
+    try {
+      // Guardar en Firestore en lotes de hasta 80 para máxima seguridad
+      for (let i = 0; i < contactIds.length; i += 80) {
+        const chunk = contactIds.slice(i, i + 80);
+        const batch = writeBatch(db);
+        chunk.forEach((id) => {
+          const ref = doc(db, 'contactos', id);
+          batch.update(ref, {
+            proximoSeguimiento: dateString,
+            actualizadoEn: now,
+          });
+        });
+        await batch.commit();
+      }
+    } catch (e) {
+      console.warn('Error actualizando fecha de llamada masiva en Firestore:', e);
+    }
+
+    setAllContacts((prev) =>
+      prev.map((c) =>
+        contactIds.includes(c.id)
+          ? {
+              ...c,
+              proximoSeguimiento: dateString,
+              actualizadoEn: now,
+            }
+          : c
+      )
+    );
+  };
+
   const claimContact = async (id: string) => {
     if (!userProfile) return;
     const now = new Date().toISOString();
@@ -658,6 +721,16 @@ export const CrmProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     const now = new Date().toISOString();
     let count = 0;
 
+    // Mapa de contactos existentes por teléfono y nombre para prevenir duplicaciones
+    const phoneMap = new Map<string, Contacto>();
+    const nameMap = new Map<string, Contacto>();
+    allContacts.forEach((c) => {
+      const p = String(c.telefono || '').replace(/\D/g, '');
+      if (p.length >= 7) phoneMap.set(p, c);
+      const n = String(c.nombre || '').trim().toLowerCase();
+      if (n) nameMap.set(n, c);
+    });
+
     const chunkSize = 40;
     try {
       for (let i = 0; i < newContacts.length; i += chunkSize) {
@@ -665,40 +738,67 @@ export const CrmProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         const batch = writeBatch(db);
 
         chunk.forEach((item) => {
-          const ref = doc(collection(db, 'contactos'));
+          const itemPhone = String(item.telefono || '').replace(/\D/g, '');
+          const itemName = String(item.nombre || '').trim().toLowerCase();
+          const existing = (itemPhone.length >= 7 ? phoneMap.get(itemPhone) : null) || (itemName ? nameMap.get(itemName) : null);
+
+          // Si el contacto ya existe, reutilizamos su doc ref y preservamos asignación y notas
+          const ref = existing?.id ? doc(db, 'contactos', existing.id) : doc(collection(db, 'contactos'));
+
           const cleanItem: Record<string, any> = {
-            nombre: (item.nombre && String(item.nombre).trim()) || 'Sin Nombre',
-            telefono: (item.telefono && String(item.telefono).trim()) || '',
-            tipoCliente: (item.tipoCliente && String(item.tipoCliente).trim()) || 'Nunca Contactado',
-            etapa: (item.etapa && String(item.etapa).trim()) || 'A1 — Base de Datos',
-            rolCargo: (item.rolCargo && String(item.rolCargo).trim()) || 'Installer',
-            vecesQueCompro: (item.vecesQueCompro && String(item.vecesQueCompro).trim()) || '1 Compra',
-            estadoContacto: (item.estadoContacto && String(item.estadoContacto).trim()) || 'Pendiente',
-            responsable: (item.responsable && String(item.responsable).trim()) || 'sin asignar',
-            notas: Array.isArray(item.notas)
-              ? item.notas.filter(Boolean).map(String)
-              : (item.notas ? [String(item.notas)] : []),
-            creadoEn: now,
+            nombre: (item.nombre && String(item.nombre).trim()) || existing?.nombre || 'Sin Nombre',
+            telefono: (item.telefono && String(item.telefono).trim()) || existing?.telefono || '',
+            tipoCliente: (item.tipoCliente && String(item.tipoCliente).trim()) || existing?.tipoCliente || 'Nunca Contactado',
+            etapa: existing?.etapa || (item.etapa && String(item.etapa).trim()) || 'A1 — Base de Datos',
+            rolCargo: (item.rolCargo && String(item.rolCargo).trim()) || existing?.rolCargo || 'Installer',
+            vecesQueCompro: (item.vecesQueCompro && String(item.vecesQueCompro).trim()) || existing?.vecesQueCompro || ((item.tipoCliente || existing?.tipoCliente) === 'Nunca Contactado' ? 'Nunca ha comprado' : '1 Compra'),
+            estadoContacto: existing?.estadoContacto || (item.estadoContacto && String(item.estadoContacto).trim()) || 'Pendiente',
+            // Preservar vendedor asignado existente si ya tenía uno
+            responsable: (existing?.responsable && existing.responsable !== 'sin asignar')
+              ? existing.responsable
+              : ((item.responsable && String(item.responsable).trim()) || 'sin asignar'),
+            notas: existing?.notas && existing.notas.length > 0
+              ? existing.notas
+              : (Array.isArray(item.notas)
+                ? item.notas.filter(Boolean).map(String)
+                : (item.notas ? [String(item.notas)] : [])),
+            creadoEn: existing?.creadoEn || now,
             actualizadoEn: now,
           };
 
+          if (item.personaEncargada && typeof item.personaEncargada === 'string' && item.personaEncargada.trim()) {
+            cleanItem.personaEncargada = item.personaEncargada.trim();
+          } else if (existing?.personaEncargada) {
+            cleanItem.personaEncargada = existing.personaEncargada;
+          }
+
           if (item.correo && typeof item.correo === 'string' && item.correo.trim()) {
             cleanItem.correo = item.correo.trim();
+          } else if (existing?.correo) {
+            cleanItem.correo = existing.correo;
           }
           if (item.direccion && typeof item.direccion === 'string' && item.direccion.trim()) {
             cleanItem.direccion = item.direccion.trim();
+          } else if (existing?.direccion) {
+            cleanItem.direccion = existing.direccion;
           }
           if (item.ultimaCompra && typeof item.ultimaCompra === 'string' && item.ultimaCompra.trim()) {
             cleanItem.ultimaCompra = item.ultimaCompra.trim();
+          } else if (existing?.ultimaCompra) {
+            cleanItem.ultimaCompra = existing.ultimaCompra;
           }
           if (item.fechaUltimoContacto && typeof item.fechaUltimoContacto === 'string' && item.fechaUltimoContacto.trim()) {
             cleanItem.fechaUltimoContacto = item.fechaUltimoContacto.trim();
+          } else if (existing?.fechaUltimoContacto) {
+            cleanItem.fechaUltimoContacto = existing.fechaUltimoContacto;
           }
           if (item.proximoSeguimiento && typeof item.proximoSeguimiento === 'string' && item.proximoSeguimiento.trim()) {
             cleanItem.proximoSeguimiento = item.proximoSeguimiento.trim();
+          } else if (existing?.proximoSeguimiento) {
+            cleanItem.proximoSeguimiento = existing.proximoSeguimiento;
           }
 
-          batch.set(ref, cleanItem);
+          batch.set(ref, cleanItem, { merge: true });
           count++;
         });
 
@@ -827,6 +927,7 @@ export const CrmProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         updateContactStage,
         deleteContact,
         reassignContacts,
+        bulkUpdateFollowUpDate,
         claimContact,
         addNote,
         markContactedToday,

@@ -9,7 +9,7 @@ export type RolCargo =
   | 'Handymen'
   | 'Reformas';
 
-export type VecesQueCompro = '1 Compra' | '<5 Compras' | '>5 Compras';
+export type VecesQueCompro = 'Nunca ha comprado' | '1 Compra' | '<5 Compras' | '>5 Compras';
 
 export type EstadoContacto = 'Pendiente' | 'Interesado' | 'En negociación' | 'Ganado' | 'Perdido';
 
@@ -250,6 +250,7 @@ export const ROLES_CARGO: RolCargo[] = [
 ];
 
 export const VECES_COMPRO: VecesQueCompro[] = [
+  'Nunca ha comprado',
   '1 Compra',
   '<5 Compras',
   '>5 Compras',

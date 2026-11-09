@@ -134,6 +134,7 @@ function cleanRoleSuffix(str: string): string {
     .replace(/\(vendedor\)/gi, '')
     .replace(/\(admin\)/gi, '')
     .replace(/\(administrador\)/gi, '')
+    .replace(/@.*$/g, '')
     .normalize('NFD')
     .replace(/[\u0300-\u036f]/g, '')
     .toLowerCase()
@@ -156,7 +157,7 @@ export function isContactAssignedToUser(
   const respLower = resp.toLowerCase();
 
   // 1. Coincidencia directa por responsableId o UID
-  if (contact.responsableId && contact.responsableId === user.uid) {
+  if (contact.responsableId && (contact.responsableId === user.uid || contact.responsableId === user.email)) {
     return true;
   }
   if (resp === user.uid || respLower === user.uid.toLowerCase()) {
@@ -169,7 +170,7 @@ export function isContactAssignedToUser(
     return true;
   }
 
-  // 3. Coincidencia por nombre normalizado (ignorando mayúsculas, acentos y sufijos de rol)
+  // 3. Coincidencia por nombre normalizado (ignorando mayúsculas, acentos, números y sufijos de rol)
   const cleanResp = cleanRoleSuffix(resp);
   const cleanUserName = cleanRoleSuffix(user.nombre || '');
 
@@ -177,13 +178,25 @@ export function isContactAssignedToUser(
     if (cleanResp === cleanUserName) return true;
     if (cleanResp.includes(cleanUserName) || cleanUserName.includes(cleanResp)) return true;
 
+    // Comparar sin espacios ni números (ej. 'rubenvalverde2303' con 'ruben valverde')
+    const noSpaceResp = cleanResp.replace(/[\s\d_-]/g, '');
+    const noSpaceUser = cleanUserName.replace(/[\s\d_-]/g, '');
+    if (noSpaceResp && noSpaceUser && (noSpaceResp === noSpaceUser || noSpaceResp.includes(noSpaceUser) || noSpaceUser.includes(noSpaceResp))) {
+      return true;
+    }
+
+    // Coincidencia con prefijo de email
+    const emailPrefix = userEmail.split('@')[0].replace(/[\s\d_-]/g, '');
+    if (emailPrefix && (noSpaceResp === emailPrefix || noSpaceResp.includes(emailPrefix) || emailPrefix.includes(noSpaceResp))) {
+      return true;
+    }
+
     // Comparar por tokens (ej. 'Ruben' y 'Valverde')
     const respTokens = cleanResp.split(/\s+/).filter(Boolean);
     const userTokens = cleanUserName.split(/\s+/).filter(Boolean);
 
     if (respTokens.length > 0 && userTokens.length > 0) {
       if (respTokens[0] === userTokens[0]) {
-        // Mismo primer nombre y alguno de los apellidos coincide o alguno es solo primer nombre
         if (respTokens.length === 1 || userTokens.length === 1) return true;
         if (respTokens.slice(1).some((t) => userTokens.slice(1).includes(t))) return true;
       }
